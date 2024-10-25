@@ -1,0 +1,2 @@
+* A formalization of Borel determinacy in Lean
+This project formalizes Martin's theorem on [[https://en.wikipedia.org/wiki/Borel_determinacy_theorem][Borel determinacy]], using Lean 4 and mathlib. We roughly follow his paper [[https://www.ams.org/books/pspum/042/]["A purely inductive proof of Borel determinacy"]] after defining Gale-Stewart games and proving closed determinacy.
