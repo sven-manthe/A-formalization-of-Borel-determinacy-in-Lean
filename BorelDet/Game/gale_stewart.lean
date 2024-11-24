@@ -2,7 +2,14 @@ import BorelDet.Game.build_strategies
 
 namespace GaleStewartGame
 open Classical
-open InfList Tree PreStrategy
+open Stream'.Discrete Tree PreStrategy
+
+/-!
+#Closed determinacy
+
+This file proves the Gale-Stewart theorem on the determinacy of closed games. More precisely, the
+defensive strategy is winning for closed games.
+-/
 
 variable {A : Type*} {T : Tree A} {G G' : Game A} {p p' : Player}
 
@@ -13,9 +20,9 @@ theorem PreStrategy.cast_winning {G G' : Game A} (h : G = G') (S : PreStrategy G
   (cast (by rw [h]) S : PreStrategy G'.tree p).IsWinning
   ↔ S.IsWinning := by subst h; rfl
 namespace Game
-theorem waiting_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
+theorem defensive_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
   (h : ¬ G.ExistsWinning p.swap) :
-  (waitingQuasi G p hP).1.subtree = (waitingPre G p).subtree := by
+  (defensiveQuasi G p hP).1.subtree = (defensivePre G p).subtree := by
   refine preserveProp_eq_extQuasi _ ?_ hP ?_ ?_
   · intro x hp nw a; simp [preserveProp, WinningPosition]
     by_contra hc; simp [Set.Nonempty] at hc
@@ -39,44 +46,42 @@ theorem waiting_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
     exact (existsWinning_iff_quasi.mp (hc a ha)).choose_spec
   · rintro rfl _; simpa [WinningPosition, ExistsWinning] using h
 
-variable [TopologicalSpace A] [DiscreteTopology A]
 theorem isClosed_image_payoff {G : Game A} :
   IsClosed G.payoff ↔ IsClosed (Subtype.val '' G.payoff) :=
-  (closedEmbedding_subtype_val (body_isClosed G.tree)).closed_iff_image_closed
-theorem waiting_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tree) :
-  (waitingPre G Player.zero).IsWinning := by
+  (Topology.IsClosedEmbedding.subtypeVal (body_isClosed G.tree)).isClosed_iff_image_isClosed
+theorem defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tree) :
+  (defensivePre G Player.zero).IsWinning := by
   intro a ha; rw [Player.payoff_zero,
     ← (isClosed_image_payoff.mp hC).closure_eq,
     mem_closure_iff_nhds_basis (hasBasis_basicOpen a)]
 
   intro x h; by_contra hfa; simp_rw [not_exists, not_and'] at hfa
-  specialize ha (a.take (2 * (x.length / 2)) ++ [a (2 * (x.length / 2))]) (by simp [← take_succ'])
-  apply (waitingPre G Player.zero).subtree_compatible ⟨_, mem_of_append ha⟩
+  specialize ha (a.take (2 * (x.length / 2)) ++ [a.get (2 * (x.length / 2))]) (by simp)
+  apply (defensivePre G Player.zero).subtree_compatible ⟨_, mem_of_append ha⟩
     (by synth_isPosition) ha
   apply AllWinning.existsWinning _ (hP.sub _); apply wonPosition_iff_disjoint.mpr
   rw [← Set.subset_empty_iff]; intro a' ⟨h1, h2⟩; apply hfa a'
-  · simp [← take_succ, ExtensionsAt.val'] at h1; apply basicOpen_mono _ h1
-    rw [basicOpen_iff_restrict.mp h]; simp [← take_succ']; omega
+  · simp [ExtensionsAt.val'] at h1; apply basicOpen_mono _ h1
+    rw [(basicOpen_iff_restrict _ _).mp h]; simp; omega
   · rw [Player.residual_odd _ _ (by simp; omega)] at h2; simpa using h2
 
-theorem waiting_winning_isOpen (hC : IsOpen G.payoff) (hP : IsPruned G.tree) :
-  (waitingPre G Player.one).IsWinning := by
-  rw [← sew_residual (waitingPre G Player.one)]; apply sew_isWinning
-  simp; intro a _; apply waiting_winning_isClosed
+theorem defensive_winning_isOpen (hC : IsOpen G.payoff) (hP : IsPruned G.tree) :
+  (defensivePre G Player.one).IsWinning := by
+  rw [← sew_residual (defensivePre G Player.one)]; apply sew_isWinning
+  simp; intro a _; apply defensive_winning_isClosed
   · simpa using hC.preimage (body.append_con [a])
   · exact hP.sub _
 theorem gale_stewart_precise (h : IsClosed G.payoff) (hP : IsPruned G.tree)
-  (h' : ¬ G.ExistsWinning Player.one) :
-  (waitingQuasi G Player.zero hP).1.IsWinning := by
-  dsimp [IsWinning]; rw [waiting_equals_pre hP h' (p := Player.zero)]
-  exact waiting_winning_isClosed h hP
+  (h' : ¬ G.ExistsWinning Player.one) : (defensiveQuasi G Player.zero hP).1.IsWinning := by
+  dsimp [IsWinning]; rw [defensive_equals_pre hP h' (p := Player.zero)]
+  exact defensive_winning_isClosed h hP
 theorem gale_stewart (h : IsClosed G.payoff) (hP : IsPruned G.tree) : G.IsDetermined :=
   if h' : _ then ⟨Player.one, h'⟩
   else ⟨Player.zero, existsWinning_iff_quasi.mpr ⟨_, gale_stewart_precise h hP h'⟩⟩
 theorem gale_stewart_precise' (h : IsOpen G.payoff) (hP : IsPruned G.tree)
   (h' : ¬ ∃ S : Strategy G.tree Player.zero, S.pre.IsWinning) :
-  (waitingQuasi G Player.one hP).1.IsWinning := by
-  dsimp [IsWinning]; rw [waiting_equals_pre hP h' (p := Player.one)]
-  exact waiting_winning_isOpen h hP
+  (defensiveQuasi G Player.one hP).1.IsWinning := by
+  dsimp [IsWinning]; rw [defensive_equals_pre hP h' (p := Player.one)]
+  exact defensive_winning_isOpen h hP
 
 end GaleStewartGame.Game

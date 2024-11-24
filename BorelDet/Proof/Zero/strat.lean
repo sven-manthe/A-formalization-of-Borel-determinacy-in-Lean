@@ -1,11 +1,10 @@
 import BorelDet.Proof.Zero.tree_lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A] [DiscreteTopology A]
-  {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
+variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
 
 noncomputable section
 
@@ -51,54 +50,52 @@ lemma body_lost_of_losable n (h : (takeLift y n).Losable) (h' : ∀ m, ¬ (takeL
   have hL := losable_of_losable_not_lost y n h h'
   have hb : (body.drop (2 * k + 1 + h.2.num) y).val ∈ body h.2.strat.pre.subtree := by
     apply mem_body_of_take (n + 1); intro m hm
-    have := (bodyTake y (h.2.num + m - 1)).losable_subtree (h := by simp only [takeLift_x_coe,
-      bodyTake_R, bodyTake_x, takeLift_game, body.take_coe, take_length, le_add_iff_nonneg_right,
-      zero_le]) (hL _ (by omega)) (by
+    have := (bodyTake y (h.2.num + m - 1)).losable_subtree (h := by simp) (hL _ (by omega)) (by
       simp only [TreeLift.dropLast, takeLift_game, takeLift_x_coe, bodyTake_R, bodyTake_x,
-        body.take_coe, take_length, Nat.succ_add_sub_one, TreeLift.take_R, TreeLift.take_x,
-        take_coe, InfList.take_take, add_le_add_iff_right, add_le_add_iff_left,min_eq_left, not_exists]
+        body.take_coe, Stream'.length_take, Nat.succ_add_sub_one, TreeLift.take_R, TreeLift.take_x,
+        take_coe, Stream'.take_take, add_le_add_iff_right, add_le_add_iff_left,min_eq_left, not_exists]
       intro h; simp at h; simp_rw [bodyTake_take y h]; apply h')
     generalize_proofs pf1 pf2 pf3 at this
     simp only [takeLift_x_coe, bodyTake_R, bodyTake_x, body.take_coe, TreeLift.lift_toPreLift,
       TreeLift.preLift_x_coe, residual_tree, takeLift_game, id_eq] at this
     generalize_proofs at this
-    simp [take_drop]
+    simp [Stream'.take_drop]
     generalize_proofs pf4 pf5
-    rw [pf4.prefix_strat_subtree (((take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _) (by
+    rw [pf4.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _) (by
       abstract show _ = (takeLift y _).game; simp) rfl] at this
     convert this using 3
     · symm; apply WinningPrefix.prefix_num _
-        (((take_prefix _ _ _).mpr (by synth_isPosition)).drop _)
+        (((Stream'.take_prefix _ _ _).mpr (by synth_isPosition)).drop _)
         (by show _ = (takeLift y _).game; simp) rfl
     · omega
   have hw := h.2.strat_winning hb
   generalize_proofs at hw
   simp only [takeLift_game, takeLift_x_coe, id_eq, residual_tree, Player.payoff_residual,
-    Player.residual_residual, List.length_append, List.length_take, List.length_drop, take_length,
+    Player.residual_residual, List.length_append, List.length_take, List.length_drop, Stream'.length_take,
     div_add_self, Player.residual_even, Player.payoff_one, Set.preimage_compl] at hw
   simp only [Set.image_val_compl] at hw --simp only slow from here
   simp only [takeLift_game, takeLift_x_coe, id_eq, residual_tree, Player.payoff_residual,
-    Player.residual_residual, List.length_append, List.length_take, List.length_drop, take_length,
+    Player.residual_residual, List.length_append, List.length_take, List.length_drop, Stream'.length_take,
     div_add_self, Player.residual_even, Player.payoff_one, Set.preimage_compl, Set.image_val_compl,
     subAt_body, subAt_body_image, body.drop_coe, Set.mem_diff, Set.mem_preimage, Set.mem_image,
     Subtype.exists, exists_and_right, exists_eq_right, not_exists] at hw
   replace hw := hw.2; simp [PreLift.game_payoff, Nat.add_mod] at hw
   generalize_proofs pf at hw
   have : ((y.val.take (2 * k + 2 + n)).drop (2 * k + 1)).take pf.num
-    ++ tail^[2 * k + 1 + pf.num] y.val = tail^[2 * k + 1] y.val := by
+    ++ₛ y.val.drop (2 * k + 1 + pf.num) = y.val.drop (2 * k + 1) := by
     have hnat : 2 * k + 2 + n = (2 * k + 1) + (1 + n) := by omega
-    rw [← add_comm pf.num, Function.iterate_add]
-    conv => lhs; lhs; rhs; rw [hnat, ← take_drop]
-    rw [InfList.take_take]
+    rw [← add_comm pf.num, ← Stream'.drop_drop]
+    conv => lhs; lhs; rhs; rw [hnat, ← Stream'.take_drop]
+    rw [Stream'.take_take]
     have : pf.num ≤ 1 + n := by
       have := h.2.num_le_length; simp_rw [takeLift_game] at this; synth_isPosition
-    simp [this]
+    simp [this, - Stream'.drop_drop]
   convert hw (by
     simp [PreLift.game_tree]; rw [this]; apply mem_body_of_take (h.2.num + 1); intro n _
-    convert (hL (n - 1) (by omega)).1; simp [PreLift.ConLong, - Function.iterate_succ, take_drop]
+    convert (hL (n - 1) (by omega)).1; simp [PreLift.ConLong, - Function.iterate_succ, Stream'.take_drop]
     congr! 3; omega)
-    (by rw [this, take_append]; exact body_mono (subtree_sub _) y.prop)
-  rw [this, take_append]
+    (by rw [this, Stream'.append_take_drop]; exact body_mono (subtree_sub _) y.prop)
+  rw [this, Stream'.append_take_drop]
 lemma lost_of_body_lost (hy : ⟨y.val, body_mono (subtree_sub _) y.prop⟩ ∉ G.payoff) :
   ∃ m, (takeLift y m).Lost := by
   rw [← Subtype.val_injective.mem_set_image,
@@ -123,7 +120,7 @@ def wonLift (h : ∀ n, (takeLift y n).Winnable) : body R.pre.subtree :=
     ((Lift.wLift_liftVal_mono ((takeLift_mono y).mpr (Nat.le_succ _))).take k).trans (by simp)⟩
 lemma wonLift_map h :
   (bodyFunctor.map π ⟨(wonLift y h).val, body_mono R.pre.subtree_sub (wonLift y h).prop⟩).val
-  = y.val := by ext; simp [wonLift]
+  = y.val := by ext; simp [wonLift, Stream'.get, Stream'.map]
 def lostLift (h : (takeLift y n).Lost) : body R.pre.subtree :=
   have h' k : (takeLift y (n + k)).Lost := h.lost_of_le ((takeLift_mono y).mpr (by omega))
   bodyEquivSystem.inv.app ⟨_, R.pre.subtree⟩ ⟨fun k ↦
@@ -132,7 +129,7 @@ def lostLift (h : (takeLift y n).Lost) : body R.pre.subtree :=
     ((Lift.lLift_liftVal_mono (h' k).1 ((takeLift_mono y).mpr (Nat.le_succ _))).take k).trans (by simp)⟩
 lemma lostLift_map (h : (takeLift y n).Lost) :
   (bodyFunctor.map π ⟨(lostLift y h).val, body_mono R.pre.subtree_sub (lostLift y h).prop⟩).val
-  = y.val := by ext; simp [lostLift]
+  = y.val := by ext; simp [lostLift, Stream'.get, Stream'.map]
 
 theorem body_stratMap :
   ∃ x : body R.pre.subtree, (bodyFunctor.map π

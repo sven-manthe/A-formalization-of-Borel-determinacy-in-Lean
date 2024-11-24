@@ -3,10 +3,12 @@ import BorelDet.Tree.tree_body
 import BorelDet.Game.strategies
 
 namespace GaleStewartGame
-open InfList Tree
+open Stream'.Discrete Tree
 
 variable {A : Type*} {p : Player}
 
+/-- a Gale-Stewart game is given by a tree of valid plays (usually pruned) and a payoff set
+  specifying the winner of an infinite play `a` : player 0 wins if and only if `a ∈ G.payoff` -/
 @[ext 900] structure Game (A : Type*) where
   tree : Tree A
   payoff : Set (body tree)
@@ -16,6 +18,7 @@ namespace Game
 @[ext] theorem ext' {G G' : Game A} (ht : G.tree = G'.tree)
   (hp : Subtype.val '' G.payoff = Subtype.val '' G'.payoff) : G = G' := by
   ext1; exact ht; apply Set.hEq_of_image_eq _ hp; rw [ht]
+/-- The residual game starting in position x -/
 @[simps tree] def residual (G : Game A) (x : List A) : Game A where
   tree := subAt G.tree x
   payoff := (body.append x)⁻¹' if x.length % 2 = 0 then G.payoff else G.payoffᶜ
@@ -39,6 +42,7 @@ abbrev PreStrategy.subgame (S : PreStrategy G.tree p) : Game A where
   payoff := Subtype.val⁻¹' G.payoff
 
 namespace Player
+/-- player p wins if and only if the resulting play lies in `p.payoff G` -/
 def payoff (p : Player) (G : Game A) : Set (body G.tree) := match p with
   | zero => G.payoff
   | one => G.payoffᶜ
@@ -55,6 +59,7 @@ end Player
 @[congr] lemma subtype_val_player_payoff {G' p'} (h : G = G') (hp : p = p') :
   Subtype.val '' (p.payoff G) = Subtype.val '' (p'.payoff G') := by congr!
 
+/-- a PreStrategy is winning if all compatible plays are won -/
 abbrev PreStrategy.IsWinning (s : PreStrategy G.tree p) := body s.subtree ⊆ p.payoff G
 theorem PreStrategy.sub_winning {s t : PreStrategy G.tree p} (h : s ≤ t) (h' : t.IsWinning) :
   s.IsWinning := subset_trans (by gcongr) h'
@@ -68,6 +73,7 @@ namespace Game
 @[congr] lemma exists_isWinning (S T : Game A) (p q : Player) (hS : S = T) (hp : p = q) :
   (∃ s : Strategy S.tree p, s.pre.IsWinning) ↔ ∃ s : Strategy T.tree q, s.pre.IsWinning := by
   subst hS hp; rfl
+/-- whether a winning strategy exists for player p -/
 def ExistsWinning (G : Game A) p := ∃ S : Strategy G.tree p, S.pre.IsWinning
 theorem existsWinning_iff_quasi :
   G.ExistsWinning p ↔ ∃ S : QuasiStrategy G.tree p, S.1.IsWinning :=
@@ -90,6 +96,7 @@ end ExistsWinning
 def AllWinning (G : Game A) (p : Player) := p.payoff G = Set.univ
 lemma AllWinning.residual (hW : G.AllWinning p) x :
   (G.residual x).AllWinning (p.residual x) := by simp_all [AllWinning]
+/-- a game is determined if some player has a winning strategy -/
 def IsDetermined (G : Game A) := ∃ p, G.ExistsWinning p
 end Game
 

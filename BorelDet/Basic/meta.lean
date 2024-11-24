@@ -44,7 +44,7 @@ def names' : Level → List Name
   | Level.imax u v => names' u ++ names' v
   | Level.param n => [n]
   | Level.mvar _ => panic "mvar" --this occurs in covering_lim
-def names (x : List Level) := (x.map names').join
+def names (x : List Level) := (x.map names').flatten
 
 def getUsedConstants_univ (e : Expr) : List Name :=
   (e.foldConsts_univ [] fun c cs => (names c) ++ cs).dedup

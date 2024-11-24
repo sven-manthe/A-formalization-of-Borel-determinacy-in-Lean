@@ -5,8 +5,10 @@ universe u
 open CategoryTheory
 
 noncomputable section
+/-- A tree with a chosen base node -/
 def PointedTrees := Σ (T : Trees), T
 
+/-- a base node preserving morphism of trees -/
 @[ext (flat := false)] structure PointedLenHom (S T : PointedTrees)
   extends Tree.LenHom S.1 T.1 where
   hp : toFun S.2 = T.2
@@ -21,6 +23,7 @@ instance : OrderHomClass (PointedLenHom S T) S.1 T.1 where
 @[simp] lemma add_toHom (f : PointedLenHom S T) (x : S.1) :
   f x = f.toHom x := rfl
 
+/-- The category of trees with a chosen base node -/
 instance : Category PointedTrees where
   Hom S T := PointedLenHom S T
   id S := ⟨𝟙 S.1, rfl⟩

@@ -1,10 +1,10 @@
 import BorelDet.Proof.One.pre_lift
 
 namespace GaleStewartGame.BorelDet.One
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A] {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
+variable {A : Type*} {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
 
 noncomputable section
 
@@ -70,21 +70,20 @@ structure LLift extends PreLift hyp where
   los : toPreLift.Losable'
 namespace LLift
 variable (H : LLift hyp)
-def S := waitingQuasi H.game Player.one (hyp.pruned.sub _)
-lemma S_winning [DiscreteTopology A] : H.S.1.IsWinning :=
+def S := defensiveQuasi H.game Player.one (hyp.pruned.sub _)
+lemma S_winning : H.S.1.IsWinning :=
   H.game.gale_stewart_precise' H.game_open (hyp.pruned.sub _) (by
     intro h; apply H.los; use 0; simpa)
 @[simps! toPreLift liftTree] def toLift := H.extend H.S
 attribute [simp_lengths] toLift_toPreLift
 lemma toLift_mono {H H' : LLift hyp} (h : H.toPreLift ≤ H'.toPreLift) :
   H.toLift.liftTree = H'.toLift.liftTree := by simp [S]; congr! 1; rw [← h]; simp
-lemma winning_condition [DiscreteTopology A] :
-  WinningCondition H.toLift.liftShort.val (by simp) := by
+lemma winning_condition : WinningCondition H.toLift.liftShort.val (by simp) := by
   rw [← not_losing]; apply _root_.not_imp_self.mp; intro hlos
   unfold LosingCondition; simp [Set.eq_empty_iff_forall_not_mem]
   intro _ u hu1 hu2; simp [Lift.liftVeryShort] at hu1
   let qS : QuasiStrategy (H.game.residual _).tree _ :=
-    (H.game.waitingQuasi Player.one (hyp.pruned.sub _)).residual
+    (H.game.defensiveQuasi Player.one (hyp.pruned.sub _)).residual
     (H.toLift.liftShort.val[2 * k + 1].1 :: u)
   have := not_imp_not.mpr (AllWinning.existsWinning (hP := (hyp.pruned.sub _).sub _))
     ((existsWinning_iff_quasi.mpr ⟨qS, H.S_winning.residual ⟨_, hu1⟩⟩).not_both_winning
@@ -93,24 +92,24 @@ lemma winning_condition [DiscreteTopology A] :
   obtain ⟨a, ha, ⟨a', ha', haa'⟩, hap⟩ := this
   simp [← haa', - Set.mem_image, game_payoff] at hap
   specialize hap (H.toLift.liftShort.val[2 * k + 1].1 :: u) (by
-    unfold WonPos; use waitingQuasi H.game Player.one (hyp.pruned.sub _)
+    unfold WonPos; use defensiveQuasi H.game Player.one (hyp.pruned.sub _)
     unfold Lift.PreWonPos; simp; use of_not_not hlos, rfl
     rw [List.append_cons]
     convert hu2 using 4
     conv => rhs; rw [H.toLift.liftShort.val.eq_take_concat (2 * k + 1) (by simp),
       List.map_append, List.map_singleton]
     simp [Lift.liftShort, ExtensionsAt.val'])
-  apply hap; use a'; simp
+  apply hap; use a'
 lemma concat_mem_tree {y a} (hp : IsPosition y Player.zero)
   (ha : H.x.val.take (2 * k + 1) ++ H.toLift.liftShort.val[2 * k + 1].1 :: (y ++ [a]) ∈ T)
   (hy : y ∈ getTree H.toLift.liftShort)
-  (hw : ¬ H.game.WinningPosition (H.toLift.liftShort.val[2 * k + 1].1 :: y ++ [a]))
-  [DiscreteTopology A] : y ++ [a] ∈ getTree H.toLift.liftShort := by
+  (hw : ¬ H.game.WinningPosition (H.toLift.liftShort.val[2 * k + 1].1 :: y ++ [a])) :
+  y ++ [a] ∈ getTree H.toLift.liftShort := by
   obtain ⟨_, S', hS⟩ := H.winning_condition
   rw [hS] at hy ⊢; rw [subtree_fair _ ⟨_, hy⟩ hp]; simp [Lift.liftVeryShort]
   rw [← List.cons_append, subtree_compatible_iff _ ⟨_, by
     simpa [Lift.liftVeryShort] using hy.1⟩ (by synth_isPosition)]
-  simpa [ha, S, waitingQuasi, tryAndElse, waitingPre, preserveProp] using fun _ ↦ hw
+  simpa [ha, S, defensiveQuasi, tryAndElse, defensivePre, preserveProp] using fun _ ↦ hw
 end LLift
 def Losable (H : PreLift hyp) := ∃ h : H.Losable', (LLift.mk _ h).toLift.Con
 lemma Losable.losable_of_le {H H' : PreLift hyp} (hL : H'.Losable) (h : H ≤ H') :
@@ -136,7 +135,7 @@ lemma winnable : H.Winnable := by
   apply AllWinning.existsWinning _ ((hyp.pruned.sub _).sub _)
   rw [List.prefix_iff_eq_take] at hux
   simpa [AllWinning, game_payoff, Set.eq_univ_iff_forall, ← hux] using
-    fun a _ ↦ ⟨u, ⟨hu, basicOpen_append_nil u a⟩⟩
+    fun a _ ↦ ⟨u, ⟨hu, basicOpen_append_nil a u⟩⟩
 lemma exists_prefix : ∃ n h, (H.take n h).Won := ⟨H.x.val.length, by simpa using H.won⟩
 def minLength := Nat.find H.exists_prefix
 @[simp] lemma minLength_le : H.minLength ≤ H.x.val.length (α := no_index _) :=
@@ -255,7 +254,7 @@ def extension : ExtensionsAt H.x where
   val := (h.a hp).val
   property := by
     have h' := (h.a hp).prop; simp [game] at h' ⊢
-    simp_rw [add_comm (2 * k + 1), ← List.drop_drop _ (2 * k + 1), ← List.append_assoc _ _ [_],
+    simp_rw [← List.drop_drop _ (2 * k + 1), ← List.append_assoc _ _ [_],
       List.take_append_drop] at h'; exact h'
 end Winnable
 

@@ -9,14 +9,17 @@ namespace GaleStewartGame.Tree
 noncomputable section
 universe u
 
+/-- The objects of the category of trees -/
 def Trees := Σ A, Tree A
 variable {S T U : Trees}
+/-- The morphisms in the category of trees, length-preserving order-preserving maps -/
 @[ext] structure LenHom (S T : Trees) extends OrderHom S.2 T.2 where
   h_length : ∀ x : S.2, (toFun x).val.length = x.val.length
 
-/-fun fact : Trees is a topos. Namely, the map to Presheaves on ℕ
-  such that evaluation becomes resEq and the transition maps are
-  given by List.take induces an equivalence-/
+/-- The category of trees has as objects trees in some set of nodes and as morphisms
+  length-preserving order-preserving maps. It is a topos (although this fact is not
+  proved here). Namely, the map to Presheaves on ℕ such that evaluation becomes resEq
+  and the transition maps are given by `List.take` induces an equivalence -/
 instance : Category Trees where
   Hom := LenHom
   id S := ⟨OrderHom.id, fun _ ↦ rfl⟩

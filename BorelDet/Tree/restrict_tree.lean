@@ -6,6 +6,7 @@ open CategoryTheory
 noncomputable section
 universe u
 variable {S T U : Trees.{u}} {k m n : ℕ}
+/-- Remove all nodes of a tree beyond level k -/
 @[simps! obj_fst] def res (k : ℕ) : Trees.{u} ⥤ Trees.{u} where
   obj S := @id Trees ⟨S.1, {
     val := {x | x ∈ S.2 ∧ x.length ≤ k}
@@ -25,6 +26,7 @@ variable {S T U : Trees.{u}} {k m n : ℕ}
 @[simp] lemma mem_res_obj (x : List T.1) :
   Membership.mem (γ := Tree T.1) ((Tree.res k).obj T).2 x ↔ x ∈ T.2 ∧ x.length ≤ k :=
   Iff.rfl
+/-- Remove all nodes of a tree not on level exactly k -/
 @[simps map] def resEq (k : ℕ) : Trees ⥤ Type* where
   obj := fun S ↦ {x | x ∈ S.2 ∧ x.length = k}
   map := fun f x ↦ ⟨(f ⟨x.val, x.prop.1⟩).val, by simp [x.prop.2]⟩
@@ -52,7 +54,7 @@ theorem resEq_val (f : S ⟶ T) (k : ℕ) x :
   ((resEq k).map f x).val = (f (resEq.val' x)).val := rfl
 @[simp] lemma resEq_val'_val (x : S) h :
   resEq.val' (k := k) (Subtype.mk (α := no_index _) x.val h) = x := by rfl
-@[simp] theorem resEq_len (k : ℕ) (x : (resEq k).obj T) :
+@[simp] lemma resEq_len (k : ℕ) (x : (resEq k).obj T) :
   x.val.length (α := no_index _) = k := x.prop.2
 
 def resIncl {k m} (h : k ≤ m) : resEq k ⟶ res m ⋙ forget Trees where
@@ -81,8 +83,10 @@ def ev_res_cocone (k : ℕ) (S : Trees) : Limits.Cocone
 def ev_res_isColimit (k : ℕ) (S : Trees) : Limits.IsColimit (ev_res_cocone k S) :=
   Limits.isColimitOfPreserves ((evaluation _ (Type u)).obj S) (res_isColimit k)
 
+/-- A morphism is k-fixing if it is a bijection on the first k levels -/
 class Fixing (k : outParam ℕ) (f : S ⟶ T) : Prop where prop : IsIso ((res k).map f)
 instance (f : S ⟶ T) [h : Fixing k f] : IsIso ((res k).map f) := h.prop
+/-- Whether a morphism is a bijection on level k -/
 class FixingEq (k : outParam ℕ) (f : S ⟶ T) : Prop where prop : IsIso ((resEq k).map f)
 instance (f : S ⟶ T) [h : FixingEq k f] : IsIso ((resEq k).map f) := h.prop
 theorem fixing_iff_forget_isIso k (f : S ⟶ T) :

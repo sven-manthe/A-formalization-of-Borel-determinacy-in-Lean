@@ -1,11 +1,11 @@
 import BorelDet.Proof.covering
 
 namespace GaleStewartGame.BorelDet
-open InfList Tree
+open Stream'.Discrete Tree
 open Classical CategoryTheory
 noncomputable section
 
-variable {A : Type*} [TopologicalSpace A]
+variable {A : Type*}
 structure Hyp (G : Game A) (k : ℕ) where
   closed : IsClosed G.payoff
   pruned : IsPruned G.tree
@@ -78,6 +78,7 @@ def ValidExt (x : List A') (a : A') := [a.1] ∈ getTree x ∧
   unfold ValidExt; split_ifs <;> (try omega); simp
 
 variable (hyp)
+/-- the tree of the unraveled game of a closed game -/
 def gameTree : Tree A' where
   val := {x | List.reverseRecOn x True (fun x a hx ↦ hx ∧ ValidExt x a)}
   property _ := by simp; tauto
@@ -123,7 +124,7 @@ variable (H : LosingCondition x.val h)
 def y : getTree x.val where
   val := H.2.choose.val
   property := by
-    obtain ⟨x, hx⟩ := x; rcases x.eq_nil_or_append with rfl | ⟨_, _, rfl⟩ <;> simp at h
+    obtain ⟨x, hx⟩ := x; rcases x.eq_nil_or_concat' with rfl | ⟨_, _, rfl⟩ <;> simp at h
     conv => lhs; rw [H.2.choose_spec]
     simpa using getTree_sub ⟨_, mem_of_append hx⟩
       (by simpa [- SetLike.coe_mem, h] using H.2.choose.prop)
@@ -139,7 +140,7 @@ end WinningCondition
 
 variable (x h) in
 lemma lose_or_win : LosingCondition x.val h ∨ WinningCondition x.val h := by
-  let ⟨x, hx⟩ := x; rcases x.eq_nil_or_append with rfl | ⟨_, _, rfl⟩ <;> simp at h
+  let ⟨x, hx⟩ := x; rcases x.eq_nil_or_concat' with rfl | ⟨_, _, rfl⟩ <;> simp at h
   simp [gameTree, h] at hx; tauto
 @[simp] lemma not_winning : ¬ WinningCondition x.val h ↔ LosingCondition x.val h := by
   constructor
@@ -162,7 +163,7 @@ scoped notation "π" => (treeHom hyp)
 def pInvTreeHom_map (x : List A) : List A' := x.zipInitsMap (fun a y ↦ (a, (G.residual y).tree))
 variable {hyp}
 @[simp] lemma treeHom_val x : (π x).val = x.val.map Prod.fst := rfl
-@[simp] lemma treeHom_body (x : body T') : ((bodyFunctor.map π) x).val = Prod.fst ∘ x.val := by
+@[simp] lemma treeHom_body (x : body T') : ((bodyFunctor.map π) x).val = x.val.map Prod.fst := by
   ext; apply Option.some_injective; rw [bodyMap_spec_res']; simp
 lemma T'_snd_small' (x : T') (h : x.val.length ≤ 2 * k) :
   getTree x.val = subAt G.tree (x.val.map Prod.fst) := by
@@ -220,7 +221,7 @@ instance treeHom_fixing : Tree.Fixing (2 * k) π := ⟨Iso.isIso_hom (treeHomRes
   show _ = res.val' ((treeHomRes hyp).hom ((treeHomRes hyp).inv _)); simp
 
 variable {hyp}
-lemma gameTree_isPruned [DiscreteTopology A] : IsPruned <| gameTree hyp := by
+lemma gameTree_isPruned : IsPruned <| gameTree hyp := by
   intro ⟨x, hx⟩; obtain ⟨hne, hPr⟩ := (getTree_ne_and_pruned ⟨x, hx⟩)
   obtain ⟨a, ha⟩ := hPr ⟨[], hne⟩; dsimp at ha
   by_cases hlen : x.length = 2 * k + 1; swap
@@ -232,14 +233,15 @@ lemma gameTree_isPruned [DiscreteTopology A] : IsPruned <| gameTree hyp := by
     conv => rhs; intro b; rw [gameTree_concat]; simp [hlen, hx, ha]
     simp_rw [exists_or, LosingCondition.concat, WinningCondition.concat, exists_exists_and_eq]
     by_cases h : ∃ y : body (subAt (getTree x) [a]),
-      x.map Prod.fst ++ [a] ++ y.val ∉ Subtype.val '' G.payoff
+      x.map Prod.fst ++ [a] ++ₛ y.val ∉ Subtype.val '' G.payoff
     · left; have ⟨y, hy⟩ := h
       rw [← (Game.isClosed_image_payoff.mp hyp.closed).closure_eq,
         mem_closure_iff_nhds_basis (hasBasis_basicOpen' (2 * k + 1 + 1) _)] at hy
       simp at hy; obtain ⟨_, hn, hy⟩ := hy; obtain ⟨n, rfl⟩ := le_iff_exists_add.mp hn
       use body.take n y; simp_rw [pullSub_body, Set.image_image, ← Set.subset_empty_iff]
       rintro x ⟨⟨z, _, rfl⟩, ⟨⟨x', hx'⟩, hxp, rfl⟩⟩; apply hy _ hx' hxp; use z
-      rw [← hlen, ← x.length_map Prod.fst, add_assoc, ← append_take, add_comm, take_succ]; simp
+      rw [← hlen, ← x.length_map Prod.fst, add_assoc, ← Stream'.append_take, add_comm, Stream'.take_succ]
+      simp [Stream'.cons_append_stream]
     · right; use ⟨⊤, PreStrategy.top_isQuasi (hPr.sub _)⟩; simpa [Set.subset_def] using h
 
 variable (hyp) in
@@ -273,12 +275,12 @@ lemma mem_getTree (x : T') : x.val.map Prod.fst ∈
 
 lemma wins_iff_answer (x : body (G').tree) :
   x ∈ (G').payoff ↔ WinningCondition (x.val.take (2 * k + 2)) (by simp) := by
-  have hmem : (bodyFunctor.map π x).val ∈ ((x.val.take (2 * k + 2)).map Prod.fst ++ · :
-    (ℕ → A) → ℕ → A) '' body (getTree (x.val.take (2 * k + 2))) := by
-    use Prod.fst ∘ tail^[2 * k + 2] x.val
-    simp [← map_append, - Function.iterate_succ]
+  have hmem : (bodyFunctor.map π x).val ∈ ((x.val.take (2 * k + 2)).map Prod.fst ++ₛ ·)
+    '' body (getTree (x.val.take (2 * k + 2))) := by
+    use (x.val.drop (2 * k + 2)).map Prod.fst
+    simp [← Stream'.map_append_stream, - Function.iterate_succ]
     apply mem_body_of_take 0; intro n _
-    simp_rw [← map_take, take_drop, List.map_drop]
+    simp_rw [← Stream'.map_take, Stream'.take_drop, List.map_drop]
     simpa using (mem_getTree (body.take (2 * k + 2 + n) x)).2
   constructor <;> intro h
   · apply (not_losing (x := body.take (2 * k + 2) x)).mp
@@ -288,7 +290,7 @@ lemma wins_iff_answer (x : body (G').tree) :
 instance : TopologicalSpace A' := ⊥
 instance : DiscreteTopology A' where eq_bot := rfl
 theorem payoff_clopen : IsClopen (G').payoff := by
-  let f : (ℕ → A') → Bool := (fun x ↦ ∃ h, WinningCondition x h) ∘ Function.take (2 * k + 2)
+  let f : (Stream' A') → Bool := (fun x ↦ ∃ h, WinningCondition x h) ∘ Stream'.take (2 * k + 2)
   suffices Continuous f by
     convert ((isClopen_discrete {true}).preimage this).preimage continuous_subtype_val
     ext; simp [- game_payoff, - game_tree, wins_iff_answer, f]
@@ -306,7 +308,7 @@ theorem payoff_clopen : IsClopen (G').payoff := by
 lemma T'_snd_medium' (x : T') (h : x.val.length = 2 * k + 1) :
   ∃ S : QuasiStrategy (G.residual (x.val.map Prod.fst)).tree Player.one,
   getTree x.val = S.1.subtree := by
-  have ⟨x, hx⟩ := x; rcases x.eq_nil_or_append with rfl | ⟨x, a, rfl⟩ <;> simp at h
+  have ⟨x, hx⟩ := x; rcases x.eq_nil_or_concat' with rfl | ⟨x, a, rfl⟩ <;> simp at h
   simp [ValidExt, h] at hx; convert hx.2.2
   simp_rw [Game.residual_tree, getTree_concat]
   rw [T'_snd_small' ⟨x, hx.1⟩ (by simp [h]), subAt_append, List.map_append, List.map_singleton]
@@ -322,7 +324,7 @@ lemma extensionsAt_ext_fst {x : (G').tree} (a b : ExtensionsAt x)
   have ha := a.prop; have hb := b.prop; simp [hx] at ha hb
   rw [ha.2, hb.2, h]
 
-lemma getTree_lost [DiscreteTopology A]
+lemma getTree_lost
   {x : (G').tree} (y : (G').tree) (h : x.val <+: y.val) (hxl : x.val.length = 2 * k + 2) --TODO synth le fails since update
   (hL : G.WonPosition (y.val.map Prod.fst) (Player.one.residual y.val)) :
   LosingCondition (hyp := hyp) x hxl := by
@@ -330,14 +332,14 @@ lemma getTree_lost [DiscreteTopology A]
   simp (config := {contextual := true}) [Game.wonPosition_iff_disjoint, Player.residual] at hL
   obtain ⟨a, ha1, ha2⟩ := isPruned_iff_basicOpen_ne.mp gameTree_isPruned y
   refine hL.subset (a := (bodyFunctor.map π ⟨a, ha2⟩).val) ⟨?_, hW.1 ?_⟩
-  · simp [basicOpen_iff_restrict, ← map_take]; congr; rwa [← basicOpen_iff_restrict]
-  · simp; use tail^[2 * k + 2] (Prod.fst ∘ a)
+  · simp [basicOpen_iff_restrict, ← Stream'.map_take]; congr; rwa [← basicOpen_iff_restrict]
+  · simp; use (a.map Prod.fst).drop (2 * k + 2)
     have hax : x.val = a.take (2 * k + 2) := by
-      rw [basicOpen_iff_restrict.mp (basicOpen_mono h ha1)]; simp [hxl]
+      rw [(basicOpen_iff_restrict _ _).mp (basicOpen_mono h ha1)]; simp [hxl]
     constructor
-    · apply mem_body_of_take 0; intro n _; rw [take_drop]
-      simpa [hax, map_take] using (mem_getTree ⟨a.take (2 * k + 2 + n), take_mem_body ha2 _⟩).2
-    · rw [hax, map_take, take_append]
+    · apply mem_body_of_take 0; intro n _; rw [Stream'.take_drop]
+      simpa [hax, Stream'.map_take] using (mem_getTree ⟨a.take (2 * k + 2 + n), take_mem_body ha2 _⟩).2
+    · rw [hax, Stream'.map_take, Stream'.append_take_drop]
 lemma LosingCondition.not_lost_short {x : (G').tree} (hxl : 2 * k + 2 ≤ x.val.length)
   (H: LosingCondition (Tree.take (2 * k + 2) x).val (by simpa))
   (hnL : ¬ G.WonPosition (x.val.map Prod.fst) (Player.one.residual x.val)) :
@@ -351,10 +353,10 @@ lemma LosingCondition.not_lost_short {x : (G').tree} (hxl : 2 * k + 2 ≤ x.val.
     (x := (x.val.map Prod.fst).take (2 * k + 2) ++ H.y.val) (by --TODO extract lemmas
     rw [Game.wonPosition_iff_disjoint]
     simp_rw [Set.image_preimage_eq_range_inter, Set.inter_assoc,
-      Set.cou_inter_self_right_eq_coe, take_coe, List.map_take] at hW --change after update
+      Set.image_val_inter_self_right_eq_coe, take_coe, List.map_take] at hW
     convert hW using 3; convert Player.payoff_zero; synth_isPosition)
   rw [← List.map_take, ← hze] at this; convert this using 1; synth_isPosition
-lemma extensionsAt_eq_of_lost [DiscreteTopology A]
+lemma extensionsAt_eq_of_lost
   {x : (G').tree} (y : (G').tree) (h : x.val <+: y.val) (hxl : 2 * k + 2 ≤ x.val.length)
   (hnL : ¬ G.WonPosition (x.val.map Prod.fst) (Player.one.residual x.val))
   (hL : G.WonPosition (y.val.map Prod.fst) (Player.one.residual y.val))

@@ -2,10 +2,10 @@ import BorelDet.Proof.covering_closed_game
 import BorelDet.Proof.win_asap
 
 namespace GaleStewartGame.BorelDet.One
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A] {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
+variable {A : Type*} {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
 
 noncomputable section
 
@@ -18,7 +18,7 @@ namespace PreLift
 variable (H : PreLift hyp)
 attribute [simp] hlvl
 @[simp] lemma hlvl' : 2 * k ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
-lemma gameTree_eq : subAt (getTree (pInv π (Tree.take (2 * k) H.x)).val) [H.x.val[2 * k]] =
+lemma gameTree_eq : subAt (getTree (pInv π (Tree.take (2 * k) H.x)).val) [H.x.val[2 * k]'H.hlvl] =
   subAt T (H.x.val.take (2 * k + 1)) := by simp
 
 @[simps] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : PreLift hyp where
@@ -63,7 +63,7 @@ variable (hyp) in
 namespace Lift
 variable (H : Lift hyp)
 def liftVeryShort : T' where
-  val := (pInv π (Tree.take (2 * k) H.x)).val ++ [⟨H.x.val[2 * k], H.liftTree⟩]
+  val := (pInv π (Tree.take (2 * k) H.x)).val ++ [⟨H.x.val[2 * k]'H.hlvl, H.liftTree⟩]
   property := by
     simp [- pInv_treeHom_val]
     simp [H.x.val.take_concat_get' (2 * k) (by have := H.hlvl; omega)]
@@ -232,7 +232,7 @@ def WonPos := {u | ∃ S, (H.extend S).PreWonPos u}
 @[simps (config := {isSimp := false})] def game : Game A where
   tree := subAt T (H.x.val.take (2 * k + 1))
   payoff := Subtype.val⁻¹' ⋃ u ∈ H.WonPos, basicOpen u
-lemma game_open [DiscreteTopology A] : IsOpen H.game.payoff := IsOpen.preimage
+lemma game_open : IsOpen H.game.payoff := IsOpen.preimage
   continuous_subtype_val (isOpen_iUnion fun _ ↦ isOpen_iUnion fun _ ↦ basicOpen_isOpen _)
 lemma extend_take h S : (H.take n h).extend S =
   (H.extend (cast (by simp [List.take_take, h]) S)).take n h := by

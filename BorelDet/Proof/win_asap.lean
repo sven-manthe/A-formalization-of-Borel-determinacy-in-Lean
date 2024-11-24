@@ -12,10 +12,11 @@ lemma choose_eq' {α β : Type u} {p : α → Prop} {q : β → Prop} (hab : α 
 
 namespace GaleStewartGame.PreStrategy
 open Classical
-open InfList Tree Game
+open Stream'.Discrete Tree Game
 
 noncomputable section
 variable {A : Type*} (G : Game A) (p : Player)
+/-- whether there exists a prefix of `x` that is a winning position for `p` -/
 def WinningPrefix (x : List A) := ∃ (n : ℕ),
   (G.residual (x.take n)).ExistsWinning (p.residual (x.take n))
 lemma winningPrefix_of_not_mem {x} (h : x ∉ G.tree) : WinningPrefix G p x := by
@@ -24,10 +25,10 @@ variable {G p}
 lemma _root_.GaleStewartGame.Game.WinningPosition.winningPrefix {x} (h : WinningPosition G x p) :
   WinningPrefix G (p.residual x) x := ⟨x.length, by simpa⟩
 namespace WinningPrefix
-lemma mem_waitingQuasi (x : G.tree) (h : ¬ WinningPrefix G p.swap x.val) hpr :
-  x.val ∈ (waitingQuasi G p hpr).1.subtree := by
+lemma mem_defensiveQuasi (x : G.tree) (h : ¬ WinningPrefix G p.swap x.val) hpr :
+  x.val ∈ (defensiveQuasi G p hpr).1.subtree := by
   apply subtree_induction (S := ⊤) (by simp)
-  intro n hn hx hp _; simp [waitingQuasi, tryAndElse, waitingPre, preserveProp, ExtensionsAt.val']
+  intro n hn hx hp _; simp [defensiveQuasi, tryAndElse, defensivePre, preserveProp, ExtensionsAt.val']
   intro _ hW; apply h; use n + 1; convert hW; synth_isPosition
 lemma winningPrefix_of_residual {x y : List A}
   (hW : WinningPrefix (G.residual x) p y) :
@@ -39,6 +40,7 @@ lemma winningPrefix_of_residual {x y : List A}
 section
 variable {x : List A} (h : WinningPrefix G p x)
 
+/-- the length of the shortest prefix of `x` that is winning for `p` -/
 def num := Nat.find h
 lemma num_spec : (G.residual (x.take h.num)).ExistsWinning (p.residual (x.take h.num)) :=
   Nat.find_spec h
@@ -70,6 +72,7 @@ lemma prefix_num {G' p' y} (xy : x <+: y) (hG : G = G') (hp : p = p') :
 end
 
 variable {x : List A} (h : WinningPrefix G p x)
+/-- the winning strategy chosen for the shortest winning prefix of `x` -/
 def strat := h.num_spec.choose
 lemma strat_winning : h.strat.pre.IsWinning := h.num_spec.choose_spec
 
@@ -236,7 +239,7 @@ theorem winAsap_body (x : body (winAsap G p).subtree)
   (h : ∃ n, WinningPrefix G p (x.val.take n)) :
   ⟨x.val, body_mono (subtree_sub _) x.prop⟩ ∈ p.payoff G := by
   obtain ⟨N, h⟩ := h; have hN : h.num ≤ N := by simpa using h.num_le_length
-  suffices tail^[h.num] x.val ∈ body h.strat.pre.subtree by
+  suffices x.val.drop h.num ∈ body h.strat.pre.subtree by
     have hW := h.strat_winning this
     simp [hN] at hW; exact hW.2
   apply mem_body_of_take 0; intro n _

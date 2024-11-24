@@ -2,11 +2,10 @@ import BorelDet.Proof.covering_closed_game
 import BorelDet.Proof.win_asap
 
 namespace GaleStewartGame.BorelDet.Zero
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A]
-  {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
+variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
 
 noncomputable section
 
@@ -35,9 +34,9 @@ lemma getTree_fair {y} {a} (hy : y ∈ getTree H.liftShort.val)
 lemma game_tree_sub : H.game.tree ≤ subAt G.tree (H.liftShort.val.map Prod.fst) :=
   getTree_sub H.liftShort
 lemma game_pruned : IsPruned H.game.tree := (getTree_ne_and_pruned _).2
-lemma game_closed [DiscreteTopology A] : IsClosed H.game.payoff := by
+lemma game_closed : IsClosed H.game.payoff := by
   apply IsClosed.preimage continuous_subtype_val
-  rw [← (closedEmbedding_subtype_val (body_isClosed _)).closed_iff_image_closed,
+  rw [← (Topology.IsClosedEmbedding.subtypeVal (body_isClosed _)).isClosed_iff_image_isClosed,
     G.residual_payoff_odd _ (by simp [Nat.add_mod]), compl_compl]
   exact hyp.closed.preimage <| body.append_con _
 
@@ -74,7 +73,7 @@ lemma take_le {h} : H.take n h ≤ H := by
 @[simp] lemma take_le_take hm hn : H.take m hm ≤ H.take n hn ↔ m ≤ n ∨ H.x.val.length ≤ n := by
   (conv => lhs; dsimp [LE.le]); simp [PreLift.ext_iff]
 
-def ConShort := H.x.val[2 * k] = H.liftShort.val[2 * k].1
+def ConShort := H.x.val[2 * k]'H.hlvl = H.liftShort.val[2 * k].1
 @[simp] lemma conShort_iff_take h : (H.take n h).ConShort ↔ H.ConShort := by
   simp [ConShort, List.getElem_take']
 def ConLong := H.x.val.drop (2 * k + 1) ∈ H.game.tree

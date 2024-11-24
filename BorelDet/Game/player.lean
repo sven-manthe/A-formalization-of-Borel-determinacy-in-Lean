@@ -2,6 +2,7 @@ import BorelDet.Basic.general
 
 namespace GaleStewartGame
 
+/-- a player in a Gale-Stewart game -/
 inductive Player
   | zero
   | one
@@ -51,9 +52,11 @@ def swap : Player → Player
 @[simp, simp_isPosition] theorem swap_zero : zero.swap = one := rfl
 @[simp, simp_isPosition] theorem swap_one : one.swap = zero := rfl
 
+/-- if `p` moves in position `[]`, then `p.residual x` moves in position `x` -/
 @[simp_isPosition] def residual := if x.length % 2 = 0 then p else p.swap
 end Player
 
+/-- is player `p` to move in position `x`? -/
 @[simp_isPosition] def IsPosition (x : List A) (p : Player) : Prop := x.length % 2 = p.toNat
 
 

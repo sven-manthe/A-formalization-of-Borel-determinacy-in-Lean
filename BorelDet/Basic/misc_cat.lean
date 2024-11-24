@@ -9,7 +9,7 @@ universe u u1 v1
 variable {α C D : Type*} [Category C] [Category D]
 
 @[congr] lemma inv_congr {X Y : C} (f g : X ⟶ Y) [IsIso f] (h : f = g) :
-  inv f = inv (f := g) (I := (by subst h; infer_instance)) := by simp [h]
+  inv f = inv g (I := by subst h; infer_instance) := by simp [h]
 
 attribute [instance] ConcreteCategory.hasCoeToSort
 attribute [instance] ConcreteCategory.instFunLike
@@ -53,13 +53,12 @@ lemma naturality_apply_types {F G : C ⥤ Type u} (α: F ⟶ G)
   (f : c ⟶ d) [IsIso f]: f ∘ inv f = id := by ext x; simp
 lemma iso_cancel_comp {a b c : Type u} (f : a ⟶ b) (g : b ⟶ c) (h : a ⟶ c) (x : b)
   [IsIso f] [IsIso h] (hc : f ≫ g = h) : inv h (g x) = inv f x := by
-  have _: IsIso g := IsIso.of_isIso_fac_left hc
+  have := IsIso.of_isIso_fac_left hc
   subst hc; simp
 
-instance : Mono (X := α) Option.some := by
-  apply (mono_iff_injective _).mpr; exact Option.some_injective α
-instance {J} [Category J] {F} : Nonempty
-  (Limits.IsColimit (Limits.Types.colimitCocone (J := J) F)) :=
+instance : Mono (X := α) Option.some := (mono_iff_injective some).mpr (Option.some_injective α)
+instance {J} [Category J] {F} :
+    Nonempty (Limits.IsColimit (Limits.Types.colimitCocone (J := J) F)) :=
   ⟨Limits.Types.colimitCoconeIsColimit F⟩
 
 def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ TypeMax.{u1, v1}) :
@@ -71,8 +70,8 @@ def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ TypeMax.{u1, v1}) :
     { desc := fun s x => s.ι.app x.1 x.2
       uniq := fun s m w => funext fun ⟨j, x⟩ ↦ congr_fun (w j) x }
 theorem isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t : Limits.Cocone F) :
-  Nonempty (Limits.IsColimit t)
-  ↔ (∀ i, Mono (t.ι.app i)) ∧ Set.univ.PairwiseDisjoint (fun i ↦ Set.range (t.ι.app i))
+    Nonempty (Limits.IsColimit t)
+    ↔ (∀ i, Mono (t.ι.app i)) ∧ Set.univ.PairwiseDisjoint (fun i ↦ Set.range (t.ι.app i))
     ∧ ∀ y, ∃ i x, t.ι.app i x = y := by
   constructor
   · intro ⟨h⟩; constructor
@@ -112,7 +111,7 @@ theorem colim_isIso --exists?
   {F G : C ⥤ D} {s : Limits.Cocone F} {t : Limits.Cocone G}
   (hs : Limits.IsColimit s) (ht : Limits.IsColimit t) (f : F ≅ G) : IsIso (hs.map t f.hom) := by
   use ht.map s (f.inv); constructor <;>
-    (apply Limits.IsColimit.hom_ext (by assumption); aesop_cat)
+    (apply Limits.IsColimit.hom_ext (by assumption); simp)
 theorem coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ TypeMax.{u1,v1}}
   {s : Limits.Cocone F} {t : Limits.Cocone G} (hs : Limits.IsColimit s) (ht : Limits.IsColimit t)
   (f : ∀ j, F.obj ⟨j⟩ ⟶ G.obj ⟨j⟩) :
@@ -134,11 +133,3 @@ theorem coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ TypeMax.{u1,v1
       simp [- types_comp_apply] at h'
       have heq : i = ⟨j⟩ := (pairwiseDisjoint_iff _).mp h2 h'
       subst heq; exact ⟨x, injective_of_mono (t.ι.app ⟨j⟩) h'⟩
-
-instance [IsFiltered C] : Nonempty C := IsFiltered.nonempty
-instance [IsFilteredOrEmpty C] [Nonempty C] : IsFiltered C := {}
-instance [IsFiltered C] : IsConnected C := by
-  apply IsConnected.of_induct
-  · rintro p hne h x; let x₀ : p := ⟨_, hne⟩
-    rwa [h (IsFiltered.leftToMax x x₀), ← h (IsFiltered.rightToMax x x₀)]
-  · apply choice; infer_instance

@@ -4,6 +4,9 @@ import BorelDet.Game.player
 namespace GaleStewartGame
 open Tree
 variable {A : Type*} (T : Tree A) (p : Player)
+/-- a `PreStrategy` is a weak form of a strategy given by specifying not a single move,
+  but a possibly empty set of valid moves in all positions. This can be defined for
+  arbitrary trees and not just games as the payoff set is irrelevant -/
 def PreStrategy := ∀ x : T, IsPosition x.val p → Set (ExtensionsAt x) --TODO synth arg?
 variable {T p}
 namespace PreStrategy
@@ -16,6 +19,7 @@ instance : PartialOrder (PreStrategy T p) where
   le_antisymm _ _ ab ba := PreStrategy.ext fun x hp ↦ subset_antisymm (ab x hp) (ba x hp)
 variable (S : PreStrategy T p)
 
+/-- the tree of plays valid with a `PreStrategy` -/
 def subtree : Tree A where
   val := { x | ∃ (hx : x ∈ T), ∀ {y} {a}, (hpr : y ++ [a] <+: x) → (hpo : IsPosition y p)
     → ⟨a, mem_of_prefix hpr hx⟩ ∈ S ⟨y, mem_of_append (mem_of_prefix hpr hx)⟩ hpo }
@@ -62,6 +66,7 @@ lemma subtree_induction {S S' : PreStrategy T p} {x} (h : x ∈ S.subtree)
     · rw [S'.subtree_fair ⟨_, ih⟩ (by synth_isPosition)]
       simpa using S.subtree_sub (take_mem ⟨x, h⟩)
 
+/-- restrict a `PreStrategy` to a subtree of the game tree -/
 def restrictTree (rto : Tree A) (hr : rto ≤ T) :
   PreStrategy rto p := fun x hx a ↦ S ⟨x.val, hr x.prop⟩ hx ⟨a.val, hr a.prop⟩
 abbrev restrict (rto : PreStrategy T p.swap) :
@@ -76,9 +81,9 @@ theorem restrict_valid (rto : Tree A) (hr : rto ≤ T) :
     (le_inf (restrict_sub S rto hr) (restrict_valid S rto hr))
     (fun _ h ↦ ⟨h.2, h.1.2⟩)
 
-def residual (x : List A) :
-  PreStrategy (subAt T x) (p.residual x) := fun y hy ↦
-    {a | ⟨a.val, by simpa [List.append_assoc] using a.prop⟩ ∈
+/-- the residual strategy for the game starting in position x -/
+def residual (x : List A) : PreStrategy (subAt T x) (p.residual x) :=
+  fun y hy ↦ {a | ⟨a.val, by simpa [List.append_assoc] using a.prop⟩ ∈
       S ⟨x ++ y.val, y.prop⟩ (by synth_isPosition)}
 lemma sub_residual_subtree (x : List A) :
   subAt S.subtree x ≤ (S.residual x).subtree := by
@@ -100,6 +105,7 @@ lemma sub_residual_subtree (x : List A) :
         · synth_isPosition
   · apply sub_residual_subtree
 
+/-- A quasistrategy is a `PreStrategy` that allows at least one move in every position -/
 def IsQuasi (S : PreStrategy T p) := ∀ x hx, (S x hx).Nonempty
 end PreStrategy
 variable (T p) in
@@ -107,6 +113,7 @@ def QuasiStrategy := PSigma (@PreStrategy.IsQuasi A T p)
 @[ext] lemma QuasiStrategy.ext {f g : QuasiStrategy T p} (h : f.1 = g.1) : f = g := by
   obtain ⟨f, hf⟩ := f; obtain ⟨g, hg⟩ := g; simp at h; simp_rw [h] --make general lemma?
 variable (T p) in
+/-- A quasistrategy is a `PreStrategy` that allows exactly one move in every position -/
 def Strategy := ∀ x : T, IsPosition x.val p → ExtensionsAt x
 @[ext] lemma Strategy.ext {f g : Strategy T p} (h : ∀ x hp, f x hp = g x hp) : f = g :=
   funext fun x ↦ funext (h x)
@@ -117,6 +124,7 @@ def Strategy := ∀ x : T, IsPosition x.val p → ExtensionsAt x
 @[congr] lemma Strategy.eval_val_congr {U : Tree A} (S S' : Strategy U p) (h : S = S') (x x' : U)
   (h' : x = x') hp : (S x hp).val = (S' x' (by subst h'; exact hp)).val := by congr!
 
+/-- regard a Strategy as PreStrategy -/
 abbrev Strategy.pre (S : Strategy T p) : PreStrategy T p := fun x hx ↦ {S x hx}
 @[simp] theorem Strategy.isQuasi (S : Strategy T p) : S.pre.IsQuasi := by
   simp [PreStrategy.IsQuasi]
@@ -127,13 +135,13 @@ theorem PreStrategy.choose_sub {S : PreStrategy T p} (h : S.IsQuasi) :
   h.choose.pre ≤ S := by
   intro x hp; simpa [IsQuasi.choose] using (h x hp).some_mem
 
-theorem QuasiStrategy.subtree_isPruned
-  (S : QuasiStrategy T p) (hT : IsPruned T) : IsPruned S.1.subtree := by
-    intro ⟨x, ⟨hx, h⟩⟩; by_cases hp : IsPosition x p
-    · use (S.2 ⟨x, hx⟩ hp).some.val; rw [S.1.subtree_compatible_iff]
-      exact ⟨_, (S.2 ⟨x, hx⟩ hp).some_mem⟩
-    · obtain ⟨a, ha⟩ := hT ⟨_, hx⟩
-      exact ⟨a, (S.1.subtree_fair ⟨x, ⟨hx, h⟩⟩ (by synth_isPosition)).mpr ha⟩
+theorem QuasiStrategy.subtree_isPruned (S : QuasiStrategy T p) (hT : IsPruned T) :
+  IsPruned S.1.subtree := by
+  intro ⟨x, ⟨hx, h⟩⟩; by_cases hp : IsPosition x p
+  · use (S.2 ⟨x, hx⟩ hp).some.val; rw [S.1.subtree_compatible_iff]
+    exact ⟨_, (S.2 ⟨x, hx⟩ hp).some_mem⟩
+  · obtain ⟨a, ha⟩ := hT ⟨_, hx⟩
+    exact ⟨a, (S.1.subtree_fair ⟨x, ⟨hx, h⟩⟩ (by synth_isPosition)).mpr ha⟩
 theorem PreStrategy.IsQuasi.restrictTree_isQuasi {S : PreStrategy T p} (rto : Tree A)
   (h : S.IsQuasi) (hfair : ∀ (x : rto) (a : A), IsPosition x.val p →
   x ++ [a] ∈ T → x ++ [a] ∈ rto) (hr : rto ≤ T) : (S.restrictTree rto hr).IsQuasi := by
@@ -144,8 +152,7 @@ theorem PreStrategy.IsQuasi.restrict_isQuasi {S : PreStrategy T p} (rto : PreStr
   restrictTree_isQuasi rto.subtree h (by
     intro x a hp hx; rwa [rto.subtree_fair x (by synth_isPosition)])
     rto.subtree_sub
-abbrev QuasiStrategy.restrict
-  (S : QuasiStrategy T p) (rto : PreStrategy T p.swap) :
+abbrev QuasiStrategy.restrict (S : QuasiStrategy T p) (rto : PreStrategy T p.swap) :
   QuasiStrategy rto.subtree p := ⟨_, S.2.restrict_isQuasi rto⟩
 @[simps] def QuasiStrategy.residual (S : QuasiStrategy T p) (x : List A) :
   QuasiStrategy (subAt T x) (p.residual x) := ⟨S.1.residual x, by

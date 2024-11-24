@@ -1,3 +1,4 @@
+import Mathlib.CategoryTheory.Filtered.Connected
 import BorelDet.Basic.misc_cat
 
 open Classical CategoryTheory
@@ -6,17 +7,19 @@ variable {C : Type u2} {D : Type v2} [Category.{u1, u2} C] [Category.{v1, v2} D]
 
 noncomputable section CZigzag
 def CZag (c d : C) := (c ⟶ d) ⊕ (d ⟶ c)
-def CZag.dom {c d : C} (_: CZag c d) := c
-def CZag.codom {c d : C} (_: CZag c d) := d
+def CZag.dom {c d : C} (_ : CZag c d) := c
+def CZag.codom {c d : C} (_ : CZag c d) := d
 inductive CZigzag : C → C → TypeMax.{u1, u2}
   | refl : (c : C) → CZigzag c c
   | cons : {c d e : C} → CZag c d → CZigzag d e → CZigzag c e
-def CZigzag.trans {c d e : C} (x : CZigzag c d) (z : CZigzag d e) : CZigzag c e := match x with
+attribute [refl] CZigzag.refl
+@[trans] def CZigzag.trans {c d e : C} (x : CZigzag c d) (z : CZigzag d e) : CZigzag c e :=
+  match x with
   | refl d => z
   | cons x y => cons x (y.trans z)
 def CZigzag.of_CZag {c d : C} (f : CZag c d) := cons f (refl _)
 def CZigzag.append {c d e : C} (z : CZigzag c d) (f : CZag d e) := z.trans (of_CZag f)
-def CZigzag.symm {c d : C} (z : CZigzag c d) : CZigzag d c := match z with
+@[symm] def CZigzag.symm {c d : C} (z : CZigzag c d) : CZigzag d c := match z with
   | refl c => refl c
   | cons x y => y.symm.append x.swap
 @[simp] theorem CZigzag.symm_refl {c : C} : (refl c).symm = refl c := by rfl
@@ -30,11 +33,11 @@ theorem nonempty_cZigzag_iff_zigzag (c d : C) : Nonempty (CZigzag c d) ↔ Zigza
     · exact ⟨CZigzag.refl c⟩
     · obtain ⟨cih⟩ := ih; constructor; apply cih.append; apply choice
       rcases de with f | f <;> constructor <;> [left; right] <;> exact choice f
-theorem isConnected_iff_nonempty_cZigzag [Nonempty C]:
-  IsConnected C ↔ ∀ c d : C, Nonempty (CZigzag c d) := by
+theorem isPreconnected_iff_nonempty_cZigzag :
+  IsPreconnected C ↔ ∀ c d : C, Nonempty (CZigzag c d) := by
   constructor <;> intro h
   · intro c d; apply (nonempty_cZigzag_iff_zigzag _ _).mpr; apply isPreconnected_zigzag
-  · apply zigzag_isConnected; intro c d; apply (nonempty_cZigzag_iff_zigzag _ _).mp; apply h
+  · apply zigzag_isPreconnected; intro c d; apply (nonempty_cZigzag_iff_zigzag _ _).mp; apply h
 def CZigzag.map {c d : C} (z : CZigzag c d) (F : C ⥤ D) :
   CZigzag (F.obj c) (F.obj d) := match z with
   | refl c => refl (F.obj c)
@@ -59,6 +62,9 @@ def CZigzag.of_isos.comp {c d : C} (z : CZigzag c d) (h : z.of_isos) : c ≅ d :
   | refl c, _ => Iso.refl c
   | cons (Sum.inl f) z, h => have _: IsIso f := h.1; (asIso f).trans h.2.comp
   | cons (Sum.inr f) z, h => have _: IsIso f := h.1; (asIso f).symm.trans h.2.comp
+
+
+
 abbrev ConstantSystem (F : C ⥤ D) := ∀ {c d} (f : c ⟶ d), IsIso (F.map f)
 theorem CZigzag.ConstantSystem.map_of_isos {c d : C} {F : C ⥤ D}
   (h : ConstantSystem F) (z : CZigzag c d) : (z.map F).of_isos := match z with
@@ -137,10 +143,11 @@ theorem CZigzag.constantSystem_comp_cone_const {c : C} (z : CZigzag c c) :
 theorem CZigzag.constantSystem_comp_uniq {c d : C} (z z' : CZigzag c d) :
   z.constantSystem_comp hF = z'.constantSystem_comp hF := by
   ext; rw [← comp_inv_eq_id]
-  simpa using congr_arg Iso.hom (constantSystem_comp_cone_const hF (z.trans  z'.symm))
+  simpa using congr_arg Iso.hom (constantSystem_comp_cone_const hF (z.trans z'.symm))
 
+attribute [local instance] IsFilteredOrEmpty.isPreconnected
 def hom_constantSystem (c d : C) : F.obj c ⟶ F.obj d :=
-  ((choice (isConnected_iff_nonempty_cZigzag.mp inferInstance c d)).constantSystem_comp hF).hom
+  ((choice (isPreconnected_iff_nonempty_cZigzag.mp inferInstance c d)).constantSystem_comp hF).hom
 instance (c d : C) : IsIso (hom_constantSystem hF c d) :=
   by simp [hom_constantSystem]; infer_instance
 theorem hom_constantSystem.eq_constantSystem_comp {c d : C} (z : CZigzag c d) :
@@ -154,27 +161,25 @@ theorem hom_constantSystem.eq_F_map {c d : C} (f : c ⟶ d) :
   rw [← eq_F_map hF (𝟙 c)]; apply CategoryTheory.Functor.map_id
 @[simp] theorem hom_constantSystem.symm {c d : C} :
   inv (hom_constantSystem hF d c) = hom_constantSystem hF c d := by
-  obtain ⟨z⟩ := isConnected_iff_nonempty_cZigzag.mp inferInstance c d
+  obtain ⟨z⟩ := isPreconnected_iff_nonempty_cZigzag.mp inferInstance c d
   nth_rw 1 [eq_constantSystem_comp hF z]; simp [eq_constantSystem_comp hF z.symm]
 @[simp] theorem hom_constantSystem.trans {c d e : C} :
   hom_constantSystem hF c d ≫ hom_constantSystem hF d e = hom_constantSystem hF c e := by
-  obtain ⟨z1⟩ := isConnected_iff_nonempty_cZigzag.mp inferInstance c d
-  obtain ⟨z2⟩ := isConnected_iff_nonempty_cZigzag.mp inferInstance d e
+  obtain ⟨z1⟩ := isPreconnected_iff_nonempty_cZigzag.mp inferInstance c d
+  obtain ⟨z2⟩ := isPreconnected_iff_nonempty_cZigzag.mp inferInstance d e
   rw [eq_constantSystem_comp hF z1, eq_constantSystem_comp hF z2,
     eq_constantSystem_comp hF (z1.trans z2)]; simp
 @[simp] theorem hom_constantSystem.natTrans {c d : C} {x : D} (α: F ⟶ (Functor.const C).obj x) :
   hom_constantSystem hF c d ≫ α.app d = α.app c := by
-  obtain ⟨z⟩ := isConnected_iff_nonempty_cZigzag.mp inferInstance c d
+  obtain ⟨z⟩ := isPreconnected_iff_nonempty_cZigzag.mp inferInstance c d
   rw [eq_constantSystem_comp hF z]
-  induction' z with _ _ _ _ f z' ih; simp
-  cases f <;> simp [ih]
+  induction' z with _ _ _ _ f z' ih <;> [skip; cases f] <;> simp [*]
 
 def trivial_colimit_cocone (x : C) : Limits.Cocone F where
   pt := F.obj x
   ι := {
     app := fun c ↦ hom_constantSystem hF c x
-    naturality := by
-      intros _ _ f; rw [hom_constantSystem.eq_F_map hF f]; simp
+    naturality := by simp [hom_constantSystem.eq_F_map hF]
   }
 def trivial_isColimit (x : C) : Limits.IsColimit (trivial_colimit_cocone hF x) where
   desc := fun s ↦ s.ι.app x
@@ -190,7 +195,7 @@ instance const_incl_isIso {s : Limits.Cocone F} (hl : Limits.IsColimit s) c :
     Limits.IsColimit.uniqueUpToIso (trivial_isColimit _ _) hl
   have heq : (trivial_colimit_cocone hF c).ι.app c ≫ f.hom.hom = s.ι.app c := by apply f.hom.w
   unfold trivial_colimit_cocone at heq
-  rw [← heq]; simp; infer_instance
+  simp [← heq]; infer_instance
 end CZigzag
 instance const_proj_isIso [IsCofiltered C] {F : C ⥤ D} (hF : ConstantSystem F) {s : Limits.Cone F}
   (hl : Limits.IsLimit s) c : IsIso (s.π.app c) := by

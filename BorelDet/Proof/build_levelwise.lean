@@ -4,7 +4,7 @@ import BorelDet.Game.strategies
 
 namespace GaleStewartGame.Tree
 open Classical CategoryTheory
-open InfList
+open Stream'.Discrete
 
 noncomputable section
 universe u
@@ -17,20 +17,21 @@ variable {k m n : ℕ} {S T : Trees.{u}} {p : Player}
   constructor <;> intro h
   · simpa using h.length_le
   · obtain ⟨n, rfl⟩ := le_iff_exists_add.mp h; induction' n with n ih
-    · exact List.prefix_rfl --change after update
-    · apply List.IsPrefix.trans; apply ih
-      · omega
+    · rfl
+    · trans
+      · apply ih; omega
       · apply x.con
 @[simp] theorem bodySystem_take_val (x : BodySystemObj T) :
   (x.res k).val.take m = (x.res (k ⊓ m)).val := by
   rw [List.prefix_iff_eq_take.mp ((bodySystem_con' x).mpr (by simp : k ⊓ m ≤ k))]
-  simp only [resEq_len, List.take_eq_take, inf_le_left, min_eq_left]; rw [inf_comm]; rfl
+  simp only [resEq_len, List.take_eq_take, inf_le_left, min_eq_left, inf_comm]
 @[simp] theorem bodySystem_take (x : BodySystemObj T) :
   Tree.take m (resEq.val' (x.res k)) = resEq.val' (x.res (k ⊓ m)) := by
   ext; simp_rw [take_coe, resEq.val'_coe, bodySystem_take_val]
 theorem bodySystem_take' (x : BodySystemObj T) (h : m ≤ k) :
   (x.res k).val.take m = (x.res m).val := by
   simp; congr! <;> simp only [h, inf_of_le_right]
+/-- an isomorph of `bodyFunctor` that is more convenient to build levelwise -/
 @[simps obj] def bodySystem : Trees ⥤ Type* where
   obj := BodySystemObj
   map f := fun x ↦ {
@@ -41,23 +42,20 @@ theorem bodySystem_take' (x : BodySystemObj T) (h : m ≤ k) :
   map_comp _ _ := rfl
 @[simps] def bodyEquivSystem_app (T : Trees) : body T.2 ≃ BodySystemObj T where
   toFun x := {
-    res := fun k ↦ ⟨x.val.take k, by simp only [Set.mem_setOf_eq, Subtype.coe_prop,
-      take_mem_body, take_length, and_self]⟩
-    con := by simp only [take_prefix, le_add_iff_nonneg_right, zero_le, forall_const]
+    res := fun k ↦ ⟨x.val.take k, by simp⟩
+    con := by simp
   }
   invFun x := ⟨fun n ↦ (x.res (n + 1)).val.get ⟨n, by simp⟩, by
     intro y h; suffices y = (x.res y.length).val by simp only [this, resEq_mem]
-    apply List.ext_get?'; intro n hn; simp only [resEq_len, max_self] at hn
+    apply List.ext_getElem (by simp); intro n hn; simp only [resEq_len, max_self] at hn
     rw [basicOpen_index] at h
-    simp
-    rw [← h _ hn, List.getElem?_eq_getElem (by simp only [resEq_len, hn]), Option.some.injEq]
+    simp [hn]; rw [← h _ hn]
     apply List.IsPrefix.getElem; rw [bodySystem_con']; omega⟩
-  left_inv x := by
-    ext n; apply Option.some_injective; rw [← List.get?_eq_get]; simp
+  left_inv x := by ext n; simp [Stream'.get]
   right_inv x := by
-    ext1; ext1 n; ext1; apply List.ext_get?'; intro m hm
-    simp at *
-    rw [take_eval hm, List.getElem?_eq_getElem, List.IsPrefix.getElem]
+    ext1; ext1 n; ext1; apply List.ext_getElem (by simp); intro m hm
+    simp [Stream'.get] at *
+    intro _; apply List.IsPrefix.getElem
     rw [bodySystem_con']; omega
 @[simps!] def bodyEquivSystem : bodyFunctor ≅ bodySystem := NatIso.ofComponents
   (fun T ↦ (bodyEquivSystem_app T).toIso) (by
@@ -97,6 +95,7 @@ end BodySystemObj
     (p : Player) {S T : Trees} (f : S ⟶ T) x (h : Fixing x.val.length f) :
   IsPosition (A := no_index _) (Tree.pInv f x h).val p ↔ IsPosition x.val p := by synth_isPosition
 
+/-- a partial strategy defined only on positions up to length k -/
 def ResStrategy (T : Trees) (p : Player) (k : ℕ) :=
   ∀ x : T, IsPosition x.val p → x.val.length ≤ k → ExtensionsAt x
 namespace ResStrategy
@@ -168,6 +167,7 @@ theorem fromMap_comp' k {S T U : Trees.{u}} (f : S ⟶ T) (g : T ⟶ U) --regres
   ext; simp_rw [fromMap, ExtensionsAt.map_valT', cancel_pInv_left]
 end ResStrategy
 
+/-- a strategy as an inverse limit of a sequence of `ResStrategy` -/
 @[ext] structure StrategySystem (T : Trees) (p : Player) where
   str : ∀ k, ResStrategy T p k
   con : ∀ k, (str (k + 1)).res (Nat.le_succ k) = str k
@@ -187,13 +187,13 @@ end ResStrategy
     ext1; ext1; ext1 _ _ hl; simp_rw [← S.con' hl]; rfl
 
 section
-variable {A : Type*} {T : Tree A} {y : ℕ → A}
+variable {A : Type*} {T : Tree A} {y : Stream' A}
 theorem preStrategy_body (f : PreStrategy T p) : y ∈ body f.subtree
   ↔ ∃ (hy : y ∈ body T), ∀ (x : T), (hp : IsPosition x.val p) → (hb : y ∈ basicOpen x.val) →
-    ⟨y x.val.length, by apply hy; simp [basicOpen_concat, hb]⟩ ∈ f x hp := by
+    ⟨y.get x.val.length, by apply hy; simp [basicOpen_concat, hb]⟩ ∈ f x hp := by
   constructor <;> intro h
   · use body_mono f.subtree_sub h
-    intro x _ hy; specialize h (x ++ [y x.val.length]) (by simp [basicOpen_concat, hy])
+    intro x _ hy; specialize h (x ++ [y.get x.val.length]) (by simp [basicOpen_concat, hy])
     apply h.2 List.prefix_rfl
   · intro x hx; have hxT := h.1 _ hx
     use hxT; intro z a hpr hpo
@@ -201,7 +201,8 @@ theorem preStrategy_body (f : PreStrategy T p) : y ∈ body f.subtree
     replace hx := basicOpen_mono hpr hx; rw [basicOpen_concat] at hx
     obtain ⟨hx, rfl⟩ := hx; exact h hx
 theorem strategy_body (f : Strategy T p) : y ∈ body f.pre.subtree ↔ y ∈ body T ∧
-  ∀ (x : T), (hp : IsPosition x.val p) → y ∈ basicOpen x.val → y x.val.length = (f x hp).val := by
+  ∀ (x : T), (hp : IsPosition x.val p) → y ∈ basicOpen x.val →
+  y.get x.val.length = (f x hp).val := by
   simp_rw [preStrategy_body, ← exists_prop, Set.mem_singleton_iff, ← SetCoe.ext_iff (b := f _ _)]
 end
 def consistent (x : BodySystemObj T) (S : StrategySystem T p) :=

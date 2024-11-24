@@ -24,6 +24,7 @@ def structuredArrow_preorder (y : Y) {f : X → Y} (h : Monotone f) :
   unitIso := eqToIso (by rfl)
   counitIso := eqToIso (by rfl)
 --something similar holds for any Category, but then we need the codomain filtered
+attribute [local instance] IsFiltered.isConnected
 theorem final_of_structuredArrow_nonempty [IsDirected X LE.le] (F : X ⥤ Y)
   (h : ∀ y, Nonempty {x | y ≤ F.obj x}) : F.Final := by
   constructor; intro y

@@ -1,11 +1,10 @@
 import BorelDet.Proof.Zero.lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A] [DiscreteTopology A]
-  {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
+variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
 
 noncomputable section
 
@@ -54,7 +53,7 @@ lemma conShort : H.preLift.ConShort := by
   rw [List.getElem_append_right (by simp)]
   simpa [stratMap', stratMap, strategyEquivSystem, ResStrategy.fromMap] using
     congr_arg Subtype.val <| subtree_compatible _ (Tree.take (2 * k) H.x)
-    (a := H.x.val[2 * k]) (by have := H.hlvl'; synth_isPosition) (by simp)
+    (a := H.x.val[2 * k]'H.hlvl) (by have := H.hlvl'; synth_isPosition) (by simp)
 @[simps toPreLift] def lift (h : 2 * k + 2 ≤ H.x.val.length) : Lift hyp where
   toPreLift := H.preLift
   h'lvl := h
@@ -114,7 +113,7 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
         have hm := H.x_mem_tree' (by omega) (by synth_isPosition) --TODO abstract omega causes function expected and abstract synth_isPosition causes type mismatch above
         simp [hn, extension, Lift.extension, hW, ih'] at hm
         generalize_proofs _ _ hL hp at hm
-        convert (hL.extension_losable hp ih).1; ext1
+        convert (hL.extension_losable hp).1; ext1
         · exact hm
         · rfl
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Winnable :=
@@ -131,7 +130,7 @@ variable {H} in
 lemma lost_of_lost' {h} (hL : (H.lift h).Lost') : (H.lift h).Lost := by
   rcases H.conLong_or_lost with h' | h'
   · use hL; convert H.preLift.conLong_take (h := hL.mk.takeMin.hlvl) h'
-    simp [Lift.LLift.takeMin]; congr; symm; simp; exact hL.mk.minLength_le
+    simp [Lift.LLift.takeMin]; congr; simpa using hL.mk.minLength_le
   · exact h'.2
 
 lemma x_mem_tree_short' h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Player.zero) :
@@ -270,7 +269,7 @@ lemma losable_subtree {h} (hL : (H.lift h).Losable) (hnL : ¬ ∃ h', ((H.dropLa
   · cases hnL ⟨by synth_isPosition, by
       apply hi.lost_of_le; simp [dropLast]; rw [hL.2.prefix_num _ (by simp) rfl]
       · omega
-      · exact List.prefix_rfl⟩ --change after update
+      · rfl⟩
   · symm; unfold Lift.Losable.extension Lift.Losable.a Lift.Losable.x'
     rw [this.2.prefix_strat_apply' ((List.take_prefix _ _).drop _) (by simp) rfl]
     simp [List.take_drop]; congr 2

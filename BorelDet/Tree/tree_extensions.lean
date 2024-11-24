@@ -15,6 +15,8 @@ abbrev pointedResObj (k : ℕ) (T : PointedTrees) : PointedTrees where
   fst := (Tree.res k).obj T.1
   snd := ⟨T.2.val.take k, by simp only [res_obj_fst, CompleteSublattice.mem_coe, mem_res_obj,
     take_mem, List.length_take, min_le_iff, le_refl, true_or, and_self]⟩
+/-- restriction of a pointed tree, obtained by replacing
+  the base node by an ancestor if necessary -/
 def pointedRes (k : ℕ) : PointedTrees ⥤ PointedTrees where
   obj := pointedResObj k
   map {S T} f := ⟨(forgetPoint ⋙ res k).map f, by
@@ -51,6 +53,7 @@ def extensionsRes T :
   = extensions.val' a := by subst h; rfl
 
 variable {S T : Trees.{u}} (f : S ⟶ T) (x : S) (y : T)
+/-- if f is (|x|+1)-fixing, then it induces a bijection on extensions of x -/
 def pointedRes_iso (hx : Fixing (x.val.length + 1) f := by abstract synth_fixing) :
   (pointedRes (x.val.length + 1)).obj (mkPointed x)
   ≅ (pointedRes (x.val.length + 1)).obj (mkPointed (f x)) :=

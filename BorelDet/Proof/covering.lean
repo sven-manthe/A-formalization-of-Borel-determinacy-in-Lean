@@ -3,12 +3,13 @@ import BorelDet.Proof.build_levelwise
 
 namespace GaleStewartGame
 open Classical CategoryTheory
-open Tree
+open Tree Stream'.Discrete
 
 noncomputable section
 universe u
 variable {k m n : ℕ} {p : Player}
 namespace Covering
+/-- a tree that is pruned and nonempty as required for determinacy -/
 def PTrees := Σ' (T : Trees), IsPruned T.2 ∧ [] ∈ T.2
 @[simp] theorem pTrees_isPruned (T : PTrees) : IsPruned T.1.2 := T.2.1
 @[simp] theorem pTrees_ne (T : PTrees) : [] ∈ T.1.2 := T.2.2
@@ -18,6 +19,8 @@ theorem ResStrategy.res_surj (h : m ≤ k) (T : PTrees) p :
   ext _ _ hl; simp [ResStrategy.res, hl]
 structure PTreesS where
   tree : PTrees
+/-- a map of strategies whose output on the first k levels only depends on
+  the input on the first k levels-/
 @[ext] structure LvlStratHom (T U : PTreesS) where
   toFun : ∀ p k, ResStrategy T.tree.1 p k → ResStrategy U.tree.1 p k
   con : ∀ p {k m} (h : m ≤ k) S, (toFun p k S).res h = toFun p m (S.res h)
@@ -71,11 +74,14 @@ theorem bodyLiftExists_iff_system
   · let y' : Tree.bodyFunctor.obj U.1 := ⟨y.val, body_mono (PreStrategy.subtree_sub _) y.prop⟩
     obtain ⟨x, ⟨hxc, hxe⟩⟩ := h
       (bodyEquivSystem.hom.app _ y') <| (bodyEquivSystem_strat _).mp y.prop
-    use ⟨bodyEquivSystem.inv.app _ x, by apply (bodyEquivSystem_strat'' _).mpr; simp [hxc]⟩
+    use ⟨(bodyEquivSystem.inv.app _ x).val, by apply (bodyEquivSystem_strat'' _).mpr; simp [hxc]⟩
     obtain ⟨y, hy⟩ := ((isIso_iff_bijective (bodyEquivSystem.inv.app _)).mp inferInstance).2 y'
     simp [← hy] at hxe; subst hxe; show _ = y'.val; rw [← hy, naturality_apply_types]; rfl
 
 end Covering
+/-- a covering used in the proof of Borel determinacy, given by a length preserving map of nodes
+and a map of strategies and satisfying a lifting condition on plays consistent with the
+strategy -/
 @[ext (flat := false)] structure Covering (T U : Covering.PTrees) where
   toHom : T.1 ⟶ U.1
   str : Covering.PTreesS.mk T ⟶ Covering.PTreesS.mk U
@@ -147,7 +153,7 @@ theorem covering_winning {G' G} (f : Games.Covering G' G) {p : Player}
   {S : Strategy G'.tree.1.2 p} (h : S.pre.IsWinning) :
   ((LvlStratHom.global _).map f.str S).pre.IsWinning := by
   intro y hy; obtain ⟨x, rfl⟩ := f.h_body ⟨y, hy⟩
-  simp_rw [← Set.mem_preimage, Subtype.preimage_image_coe (body G.2.1.tree),
+  simp_rw [← Set.mem_preimage, Set.preimage_image_eq _ Subtype.val_injective,
     covering_hpre_pl f, ← Subtype.val_injective.mem_set_image]
   exact h x.prop
 

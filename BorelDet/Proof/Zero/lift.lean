@@ -1,18 +1,17 @@
 import BorelDet.Proof.Zero.pre_lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open InfList Tree Game PreStrategy Covering
+open Stream'.Discrete Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
-variable {A : Type*} [TopologicalSpace A]
-  {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
+variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
 
 noncomputable section
 variable (H : Lift hyp)
 namespace Lift
 def liftShortWinStrat :
   QuasiStrategy (subAt H.game.tree [H.liftNode]) Player.one :=
-  waitingQuasi (H.game.residual [H.liftNode]) Player.one (H.game_pruned.sub _)
+  defensiveQuasi (H.game.residual [H.liftNode]) Player.one (H.game_pruned.sub _)
 @[simps toLift] def toWLift : WLLift hyp where
   toLift := H
   liftTree := (liftShortWinStrat H).1.subtree
@@ -25,7 +24,7 @@ attribute [simp_lengths] toWLift_toLift
   by_cases H.x.val.length ≤ n
   · rw [Lift.take_of_length_le, List.take_of_length_le] <;> simp [*]
   · convert WLLift.liftVal_take_eq_of_tree _ _
-    · symm; simp; omega
+    · simp; omega
     · apply Lift.take_le; exact h
     · simp
 lemma wLift_liftVal_mono {H H' : Lift hyp} (h : H ≤ H') :
@@ -40,14 +39,13 @@ include hW in lemma take n h : (H.take n h).Winnable := by
   have : 2 * k + 1 + (min (2 * k + 1 + m) n - (2 * k + 1)) = min (2 * k + 1 + m) n := by omega
   simpa only [List.take_drop, this, Lift.take_toPreLift, PreLift.game_take,
     PreLift.take_x, take_coe, List.take_take] using hm
-variable [DiscreteTopology A]
 include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
   dsimp [WLLift.liftMediumVal, Lift.liftNode]
   simp_rw [gameTree_concat]; use (H.R _ _ _).prop
   constructor
   · simp_rw (config := {singlePass := true}) [
       ← add_zero (2 * k + 1), List.getElem_drop', List.getElem_zero]
-    exact mem_of_prefix ⟨(H.x.val.drop (2 * k + 1)).tail, by simp [- List.tail_drop]⟩ hW.conLong --TODO diagnostics: this unfolds constTreeObj?
+    exact mem_of_prefix ⟨(H.x.val.drop (2 * k + 1)).tail, by simp⟩ hW.conLong --TODO diagnostics: this unfolds constTreeObj?
   · simp; right; rw [WinningCondition.concat]; refine ⟨?_, H.liftShortWinStrat, rfl⟩
     have h := (H.game.residual [H.liftNode]).gale_stewart_precise'
       (by simpa using H.game_closed.preimage (body.append_con _)) (H.game_pruned.sub _)
@@ -59,7 +57,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
     simp_rw [pullSub_body, Set.image_subset_iff]
     apply subset_trans h; simp [PreLift.game_payoff]
     intro x; rw [residual_payoff_odd _ _ (by simp [Nat.add_mod])]
-    simp [Lift.liftNode, append_cons]
+    simp [Lift.liftNode, ← Stream'.append_eq_cons, ← Stream'.append_append_stream]
 @[simps toWLLift] def toWLift' : WLLift' hyp where
   toWLLift := H.toWLift
   hlift := by
@@ -73,7 +71,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
           mem_subAt, toWLift_toLift, take_toPreLift, PreLift.take_x, take_coe, ← List.take_drop,
           List.getElem_drop', List.take_concat_get', List.take_drop, ← hn]
         simp [List.take_take, toWLift]
-        apply WinningPrefix.mem_waitingQuasi ⟨_, by simpa [Lift.liftNode] using hW.conLong⟩
+        apply WinningPrefix.mem_defensiveQuasi ⟨_, by simpa [Lift.liftNode] using hW.conLong⟩
         intro hwin; apply hW
         simpa [Lift.liftNode] using hwin.winningPrefix_of_residual
       · conv => lhs; unfold WLLift.liftVal; rw [List.getElem_append_right (by simp)]
@@ -108,8 +106,8 @@ lemma losable (h : H.ConLong) : H.Losable := by
   simp [Lost', WonPosition, AllWinning] at hL ⊢
   rw [Set.eq_empty_iff_forall_not_mem] at *; rintro ⟨x, hx⟩ ⟨hx', hxp⟩
   simp [Nat.add_mod] at hx hx' hxp; apply hL ⟨x, by
-    simpa [← append_assoc] using body_mono H.game_tree_sub hx⟩
-  simp; convert hxp.1 using 1; ext1; simp [← append_assoc, hxp.2]
+    simpa [← Stream'.append_append_stream] using body_mono H.game_tree_sub hx⟩
+  simp; convert hxp.1 using 1; ext1; simp [← Stream'.append_append_stream, hxp.2]
 lemma exists_prefix : ∃ n h, (H.take n h).Lost' :=
   ⟨H.x.val.length, H.h'lvl, by simpa using H.lost'⟩
 def minLength := Nat.find H.exists_prefix
@@ -145,8 +143,7 @@ lemma extend'_le : (H.extend' hL).minLength ≤ n := (H.extend' hL).le_of_take h
     simp [LLift.takeMin]; congr; simpa using extend'_le hL
 lemma extend'_le' : hL.mk.minLength ≤ n := by simpa using extend'_le hL
 @[simp] lemma takeMin_extend' : (H.extend' hL).takeMin = hL.mk.takeMin := by
-  simp [LLift.takeMin]; congr; symm; simpa using extend'_le hL
-  --TODO avoid symm by adding eq_min_left_iff besides min_eq_left_iff (already there for inf sup)
+  simp [LLift.takeMin]; congr; simpa using extend'_le hL
 @[simp] lemma liftTree_extend' :
   (H.extend' hL).toWLLift.liftTree = hL.mk.toWLLift.liftTree := by
   simp [LLift.toWLLift, List.take_take, extend'_le' hL]
@@ -159,7 +156,7 @@ lemma extend'_le' : hL.mk.minLength ≤ n := by simpa using extend'_le hL
   · rw [List.take_of_length_le]; congr 2; ext1; simp; rw [Lift.take_of_length_le]
     all_goals simpa
   · symm; convert WLLift.liftVal_take_eq_of_tree _ _
-    · symm; simp; omega
+    · simp; omega
     · apply Lift.take_le; exact h
     · simp
 end extend'
@@ -185,8 +182,8 @@ lemma liftMedium_mem : hL.1.mk.toWLLift.liftMediumVal ∈ T' := by
   · simp_rw (config := {singlePass := true}) [← add_zero (2 * k + 1),
       List.getElem_drop', List.getElem_zero]
     simpa using mem_of_prefix ⟨(hL.1.mk.takeMin.x.val.drop (2 * k + 1)).tail, by
-      simp [- List.tail_drop]
-      rw [← List.head_take, List.drop_take, List.head_cons_tail]
+      simp
+      rw [← List.getElem_take, List.getElem_cons_drop]
       simp [Nat.sub_eq_zero_iff_le, Nat.lt_iff_add_one_le]⟩ hL.2
   · simp; left; rw [LosingCondition.concat]
     refine ⟨?_, ⟨hL.1.mk.takeMin.x.val.drop (2 * k + 2), ?_⟩, ?_⟩
@@ -194,7 +191,7 @@ lemma liftMedium_mem : hL.1.mk.toWLLift.liftMediumVal ∈ T' := by
       rintro _ ⟨⟨z, hzb, hze⟩, ⟨_, _, rfl⟩⟩
       apply (wonPosition_iff_disjoint'.mp hL.1.mk.min_prefix).subset ⟨_, by simpa⟩
       use ⟨z, by simpa⟩; ext1
-      simp [← append_assoc, H.liftShort_val_map] at hze
+      simp [← Stream'.append_append_stream, H.liftShort_val_map] at hze
       rw [List.drop_take, ← List.take_add] at hze
       simpa using hze
     · rw [LLift.takeMin_x_coe]; simp; rw [List.getElem_take', List.getElem_cons_drop]
@@ -278,9 +275,9 @@ lemma extensionPreLift_take :
 lemma extensionLift_take :
   (h.extensionLift hp).take H.x.val.length H.h'lvl = H := by
   ext1; apply extensionPreLift_take
-lemma extension_losable hp (hc : H.ConLong) : (h.extensionLift hp).Losable := by
+lemma extension_losable hp : (h.extensionLift hp).Losable := by
   apply extend; rw [extensionLift_take]; exact h
-  unfold PreLift.ConLong at hc ⊢
+  unfold PreLift.ConLong
   simp [extension, ExtensionsAt.val']
   rw [List.drop_append_of_le_length (by simp)]
   simpa [← List.append_assoc] using (h.a hp).prop
@@ -288,7 +285,7 @@ end
 end Losable
 
 variable (H : Lift hyp) (hp : IsPosition H.x.val Player.zero)
-  (R : ResStrategy ⟨_, T'⟩ Player.zero H.x.val.length) [DiscreteTopology A]
+  (R : ResStrategy ⟨_, T'⟩ Player.zero H.x.val.length)
 def extension : ExtensionsAt H.x :=
   if h : H.Lost then h.toLLift'.extensionMap hp R
   else if h : H.Losable then h.extension hp

@@ -5,13 +5,12 @@ import BorelDet.Proof.One.strat
 import BorelDet.Proof.covering_lim
 
 namespace GaleStewartGame
-open Tree Covering
+open Tree Covering Stream'.Discrete
 open Classical MeasureTheory CategoryTheory
 noncomputable section
 
 namespace BorelDet
-variable {A : Type*} [TopologicalSpace A] [DiscreteTopology A]
-  {G : Game A} {k : ℕ} (hyp : Hyp G k)
+variable {A : Type*} {G : Game A} {k : ℕ} (hyp : Hyp G k)
 abbrev Gh : Games := ⟨A, G, hyp.pruned, hyp.nonempty⟩
 abbrev G'h : Games := ⟨A', G', gameTree_isPruned, gameTree_ne⟩
 def treeCov : (G'h hyp).tree ⟶ (Gh hyp).tree where
@@ -43,6 +42,7 @@ variable (T : PTrees) (W : Set (body T.1.2)) {n : ℕ}
     snd := T.2
   }
 
+/-- a slight strengthening of Martin's notion of unravelable games to facilitate Borel induction -/
 def UniversallyUnravelable :=
   ∀ ⦃T'⦄ (f : T' ⟶ T), (extendToGame T' <| (bodyFunctor.map f.toHom)⁻¹' W).IsUnravelable
 theorem unravelable_complement (h : UniversallyUnravelable T W) :
@@ -115,7 +115,9 @@ def unravelLim : Limits.Cone (unravelFunctor G k) :=
 theorem unravelLim_fixing : Covering.Fixing k ((unravelLim G k).π.app ⟨0⟩) :=
   limCone_fixing (unravelFunctor_fixing G k) 0
 
-set_option synthInstance.maxHeartbeats 100000 in
+set_option maxHeartbeats 400000 in
+set_option synthInstance.maxHeartbeats 400000 in
+/-- the σ-algebra of universally unravelable sets -/
 def unravelableAsMeasurable : MeasurableSpace (Tree.body T.1.2) where
   MeasurableSet' := UniversallyUnravelable T
   measurableSet_empty := open_unravelable T ∅ isOpen_empty
@@ -149,6 +151,7 @@ theorem borel_unravelable : borel _ ≤ unravelableAsMeasurable T :=
   MeasurableSpace.generateFrom_le <| open_unravelable T
 end BorelDet'
 
+/-- Borel games are determined -/
 theorem borel_determinacy (G : Games) (h : MeasurableSet[borel _] G.2.1.payoff) :
   G.2.1.IsDetermined := by
   simpa [BorelDet'.extendToGame] using

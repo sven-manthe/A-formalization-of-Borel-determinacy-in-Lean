@@ -1,6 +1,10 @@
-import BorelDet.Basic.inf_lists
+import BorelDet.Basic.fin_lists
 
 namespace GaleStewartGame
+/-- A tree is a set of finite sequences, implemented as `List A`, that is stable under
+  taking prefixes. For the definition we use the equivalent property `x ++ [a] ∈ T → x ∈ T`,
+  which is more convenient to check. We define `Tree A` as a complete sublattice of
+  `Set (List A)`, which coerces to the type of trees on `A`. -/
 def Tree (A : Type*) : CompleteSublattice (Set (List A)) :=
   CompleteSublattice.mk' {T | ∀ ⦃x : List A⦄ ⦃a : A⦄, x ++ [a] ∈ T → x ∈ T}
   (by rintro S hS x a ⟨t, ht, hx⟩; use t, ht, hS ht hx)
@@ -30,7 +34,7 @@ theorem first_tree (T : Tree A) {a : A} {x : List A} (h : a :: x ∈ T) : [a] �
 instance : Trans (List.IsPrefix) (fun x (T : Tree A) ↦ x ∈ T) (fun x (T : Tree A) ↦ x ∈ T)
   where trans := mem_of_prefix
 
-open InfList
+/-- The residual tree obtained by regarding the node x as new root -/
 def subAt : Tree A := ⟨(x ++ ·)⁻¹' T, fun _ _ _ ↦ mem_of_append (by rwa [List.append_assoc])⟩
 @[simp] theorem subAt_nil : subAt T [] = T := rfl
 @[simp] theorem subAt_append : subAt (subAt T x) y = subAt T (x ++ y) := by simp [subAt]
@@ -40,6 +44,7 @@ def subAt : Tree A := ⟨(x ++ ·)⁻¹' T, fun _ _ _ ↦ mem_of_append (by rwa 
 @[simps coe] def drop {T : Tree A} (n : ℕ) (x : T) : subAt T (Tree.take n x).val :=
   ⟨x.val.drop n, by simp⟩
 
+/-- Adjoint of `subAt` -/
 def pullSub : Tree A where
   val := { y | y.take x.length <+: x ∧ y.drop x.length ∈ T }
   property := fun y a ⟨h1, h2⟩ ↦
@@ -83,12 +88,14 @@ theorem pullSub_adjunction (S T : Tree A) (x : List A) : pullSub S x ≤ T ↔ S
         cases hp <| List.prefix_iff_eq_take.mpr (List.IsPrefix.eq_of_length h (by simpa)).symm
   · rw [mem_pullSub_short (by omega), mem_pullSub_short (by simp),
       mem_pullSub_short (by simp; omega)]
-    simpa using fun _ ↦ (z.isPrefix_append_of_length x y hl.le).symm
+    simpa using fun _ ↦ (z.isPrefix_append_of_length hl.le).symm
 
+/-- Set of children of node x as elements of T -/
 def ExtensionsAt {T : Tree A} (x : T) := { a : A // x.val ++ [a] ∈ T }
 namespace ExtensionsAt
 variable {S T}
 variable {n : ℕ} {x : T} (a : ExtensionsAt x)
+/-- The underlying list of a child -/
 def val' := x.val ++ [a.val]
 @[simps coe] def valT' : T := ⟨a.val', a.prop⟩
 @[ext] theorem ext {a b : ExtensionsAt x} (h : a.val = b.val) : a = b := Subtype.ext h
@@ -123,6 +130,7 @@ lemma valT'_take_of_eq (a : ExtensionsAt x) (h : n = x.val.length) :
   take (x.val.length (α := no_index _)) a.valT'  (A := no_index _) = x := Subtype.ext a.val'_take
 end ExtensionsAt
 
+/-- A tree is pruned if it has no leaves -/
 def IsPruned : Prop := ∀ x : T, Nonempty (ExtensionsAt x)
 theorem IsPruned.sub {T : Tree A} (h : IsPruned T) (x : List A) : IsPruned (subAt T x) := by
   intro ⟨y, h'⟩
@@ -142,8 +150,9 @@ theorem IsPruned.pullSub {T : Tree A} (hP : IsPruned T) (x : List A) : IsPruned 
 @[simp] theorem top_isPruned [h : Nonempty A]: IsPruned (⊤ : Tree A) :=
   fun _ ↦ ⟨h.some, CompleteSublattice.mem_top⟩
 
+/-- Order elements of a tree by the prefix relation -/
 @[simps] instance (T : Tree A) : PartialOrder T where
-  le x y := x.val <+: y
+  le x y := x.val <+: y.val
   le_refl _ := List.prefix_refl _
   le_trans _ _ _ := List.IsPrefix.trans
   le_antisymm _ _ h h' :=

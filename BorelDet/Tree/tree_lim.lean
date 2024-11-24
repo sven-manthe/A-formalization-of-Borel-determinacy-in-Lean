@@ -8,6 +8,7 @@ open Classical CategoryTheory
 noncomputable section
 universe u
 variable {A B : Type u} {m k n : ℕ}
+/-- Object function of adjoint of `res k` -/
 def constTreeObj (k : ℕ) (A : Type u) : Tree A where
   val := {x | ∃ m ≤ k, x ∈ Set.range (List.replicate m)}
   property := by
@@ -30,6 +31,7 @@ theorem headD_nonempty (x : constTreeObj k A) (h : x.val ≠ []) : headD x = x.v
   obtain ⟨_, ⟨_, h, ⟨_, rfl⟩⟩⟩ := x; simp [h]
 @[simp] theorem constTree_zero (x : constTreeObj 0 A) : x.val = [] := by
   apply List.eq_nil_of_length_eq_zero; linarith [constTree_length x]
+/-- Adjoint of `res k` -/
 def constTree (k : ℕ) : Type u ⥤ Trees where
   obj A := ⟨A, constTreeObj k A⟩
   map f := {
@@ -93,10 +95,11 @@ def resEqAdj (k : ℕ) : constTree k ⊣ resEq k := Adjunction.mkOfUnitCounit {
 instance (k : ℕ) : Functor.IsRightAdjoint (Tree.resEq k) :=
   ⟨Tree.constTree k, ⟨Tree.resEqAdj k⟩⟩
 instance (k : ℕ) : Limits.PreservesLimitsOfSize (Tree.resEq k) :=
-  (Tree.resEqAdj k).rightAdjointPreservesLimits
+  (Tree.resEqAdj k).rightAdjoint_preservesLimits
 
 section TreeLimits
 variable {J : Type} [Category J] (F : J ⥤ Trees)
+/-- Object function of limit functor in `Trees` -/
 def limObj : Tree (∀ j, (F.obj j).1) where
   val := { x | ∃ (h : ∀ j, x.mapEval j ∈ (F.obj j).2),
     ∀ ⦃i j⦄ (f : i ⟶ j), (F.map f ⟨_, h i⟩).val = x.mapEval j }
@@ -112,7 +115,7 @@ def limCone : Limits.Cone F where
   π := {
     app := fun j ↦ {
       toFun := fun x ↦ ⟨x.val.mapEval j, x.prop.1 j⟩
-      monotone' := fun _ _ h ↦ h.map (eval j)
+      monotone' := fun _ _ h ↦ h.map _
       h_length := by simp_rw [List.length_map, implies_true]
     }
     naturality := fun _ _ f ↦ ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (x.prop.2 f).symm
