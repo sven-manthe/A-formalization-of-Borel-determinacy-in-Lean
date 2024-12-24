@@ -6,17 +6,29 @@ open Classical CategoryTheory
 open Tree Stream'.Discrete
 
 noncomputable section
-universe u
 variable {k m n : ℕ} {p : Player}
 namespace Covering
 /-- a tree that is pruned and nonempty as required for determinacy -/
 def PTrees := Σ' (T : Trees), IsPruned T.2 ∧ [] ∈ T.2
 @[simp] theorem pTrees_isPruned (T : PTrees) : IsPruned T.1.2 := T.2.1
 @[simp] theorem pTrees_ne (T : PTrees) : [] ∈ T.1.2 := T.2.2
-theorem ResStrategy.res_surj (h : m ≤ k) (T : PTrees) p :
-  (ResStrategy.res h (T := T.1) (p := p)).Surjective := by
-  intro S; use fun x hp _ ↦ if h : x.val.length ≤ m then S x hp h else choice (T.2.1 x)
-  ext _ _ hl; simp [ResStrategy.res, hl]
+end Covering
+namespace Tree.ResStrategy
+variable {T : Covering.PTrees} (S : ResStrategy T.1 p k)
+def choose_succ : ResStrategy T.1 p m :=
+  fun x hp _ ↦ if h' : x.val.length ≤ k then S x hp h' else choice (T.2.1 x)
+@[simp] lemma res_choose_succ (h : k ≤ m) : S.choose_succ.res h = S := by
+  ext _ _ hl; simp [choose_succ, res, hl]
+theorem res_surjective (h : m ≤ k) : (res h (T := T.1) (p := p)).Surjective :=
+  fun S ↦ ⟨_, S.res_choose_succ h⟩
+@[simps] def choose_system : StrategySystem T.1 p where
+  str k := S.choose_succ
+  con k := by ext x; simp [choose_succ, res]
+lemma choose_system_self : S.choose_system.str k = S := by ext _ _ hl; simp [choose_succ, hl]
+theorem str_surjective : (fun (S : StrategySystem T.1 p) ↦ S.str k).Surjective :=
+  fun S ↦ ⟨_, S.choose_system_self⟩
+end Tree.ResStrategy
+namespace Covering
 structure PTreesS where
   tree : PTrees
 /-- a map of strategies whose output on the first k levels only depends on
@@ -87,22 +99,14 @@ strategy -/
   str : Covering.PTreesS.mk T ⟶ Covering.PTreesS.mk U
   h_body : Covering.bodyLiftExists toHom str
 namespace Covering
-def comp {T U V} (g : Covering U V) (f : Covering T U) : Covering T V where
-  toHom := f.toHom ≫ g.toHom
-  str := f.str ≫ g.str
-  h_body x := by
-    obtain ⟨y, hy⟩ := g.h_body (cast (by simp; rfl) x); obtain ⟨z, hz⟩ := f.h_body y
-    use z
-    simp only [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, set_coe_cast] at hz hy
-    simp_rw [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, hz, hy]
 instance : Category PTrees where
   Hom := Covering
   id T := ⟨𝟙 T.1, LvlStratHom.id _, fun y ↦ ⟨y, by simp⟩⟩
-  comp f g := g.comp f/-⟨f.toHom ≫ g.toHom, f.str ≫ g.str, fun x ↦ by abstract --TODO abstract fails
+  comp f g := ⟨f.toHom ≫ g.toHom, f.str ≫ g.str, fun x ↦ by abstract
     obtain ⟨y, hy⟩ := g.h_body (cast (by simp; rfl) x); obtain ⟨z, hz⟩ := f.h_body y
     use z
     simp only [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, set_coe_cast] at hz hy
-    simp_rw [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, hz, hy]⟩-/
+    simp_rw [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, hz, hy]⟩
 def PTreeForget : PTrees ⥤ Trees where
   obj T := T.1
   map f := f.toHom
@@ -119,7 +123,7 @@ lemma comp_covering_str_apply (S T U : PTrees) (f : S ⟶ T) (g : T ⟶ U) A :
 @[ext] lemma ext' {T U : PTrees} {f g : T ⟶ U} (h1 : f.toHom = g.toHom)
   (h2 : f.str = g.str) : f = g := Covering.ext h1 h2
 
-def Fixing k {T U : PTrees.{u}} (f : T ⟶ U) :=
+def Fixing k {T U : PTrees} (f : T ⟶ U) :=
   ∃ _ : Tree.Fixing k f.toHom, ∀ p, f.str.toFun p k = ResStrategy.fromMap f.toHom
 @[simp] theorem fixing_id k T : Fixing k (𝟙 T) := by
   use (by synth_fixing); intros; ext; simp
@@ -131,7 +135,7 @@ theorem fixing_comp k {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V)
 theorem fixing_snd_mon {k m} (hm : k ≤ m) {T U : PTrees} (f : T ⟶ U)
   (h : Fixing m f) (p : Player) :
   f.str.toFun p k = ResStrategy.fromMap (f := f.toHom) (h := h.1.mon hm) := by
-  ext S'; obtain ⟨S', rfl⟩ := ResStrategy.res_surj hm _ _ S'
+  ext S'; obtain ⟨S', rfl⟩ := ResStrategy.res_surjective hm S'
   have hs := by simpa using congr_arg (ResStrategy.res hm) (congr_fun (h.2 p) S')
   rw [← hs, f.str.con]
 theorem fixing_mon {S T} (f : S ⟶ T) (h : Fixing k f) (hn : n ≤ k) :
@@ -144,7 +148,7 @@ instance (G : Games) : TopologicalSpace G.1 := ⊥
 instance (G : Games) : DiscreteTopology G.1 where eq_bot := rfl
 abbrev Games.tree (G : Games) : PTrees := ⟨⟨G.1, G.2.1.tree⟩, G.2.2⟩
 @[ext] structure Games.Covering (G' : Games) (G : Games) extends
-  Covering G'.tree G.tree where
+  GaleStewartGame.Covering G'.tree G.tree where
   hpre : (Tree.bodyFunctor.map toHom)⁻¹' (G.2.1.payoff) = G'.2.1.payoff
 @[simp] theorem covering_hpre_pl {G' G} (f : Games.Covering G' G) (p : Player) :
   (Tree.bodyFunctor.map f.toHom)⁻¹' (p.payoff G.2.1) = p.payoff G'.2.1 := by

@@ -7,8 +7,7 @@ open Classical CategoryTheory
 open Stream'.Discrete
 
 noncomputable section
-universe u
-variable {k m n : ℕ} {S T : Trees.{u}} {p : Player}
+variable {k m n : ℕ} {S T : Trees} {p : Player}
 @[ext] structure BodySystemObj (T : Trees) where
   res : ∀ k, (resEq k).obj T
   con : ∀ k, (res k).val <+: (res (k + 1)).val
@@ -48,7 +47,7 @@ theorem bodySystem_take' (x : BodySystemObj T) (h : m ≤ k) :
   invFun x := ⟨fun n ↦ (x.res (n + 1)).val.get ⟨n, by simp⟩, by
     intro y h; suffices y = (x.res y.length).val by simp only [this, resEq_mem]
     apply List.ext_getElem (by simp); intro n hn; simp only [resEq_len, max_self] at hn
-    rw [basicOpen_index] at h
+    rw [principalOpen_index] at h
     simp [hn]; rw [← h _ hn]
     apply List.IsPrefix.getElem; rw [bodySystem_con']; omega⟩
   left_inv x := by ext n; simp [Stream'.get]
@@ -152,13 +151,13 @@ def fromMapEquiv p k (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by abstract syn
   (fromMap (𝟙 T)) S' = S' := by
   ext1; apply ExtensionsAt.ext_valT'; simp [fromMap]
 
-@[simp] theorem fromMap_comp k {S T U : Trees.{u}} (f : S ⟶ T) (g : T ⟶ U)
+@[simp] theorem fromMap_comp k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
   (hf : Tree.Fixing k f := by abstract synth_fixing) (hg : Tree.Fixing k g := by abstract synth_fixing)
   (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := by
   ext1 x _ hl; apply ExtensionsAt.ext_valT'
   simp_rw [fromMap, ExtensionsAt.map_valT', comp_apply, ← pInv_comp']
-theorem fromMap_comp' k {S T U : Trees.{u}} (f : S ⟶ T) (g : T ⟶ U) --regression need
+theorem fromMap_comp' k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U) --regression need
   (hf : Tree.Fixing k f) (hg : Tree.Fixing k g) (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := fromMap_comp k f g hf hg S'
 @[simp] theorem fromMap_valT' {S T : Trees}
@@ -189,29 +188,29 @@ end ResStrategy
 section
 variable {A : Type*} {T : Tree A} {y : Stream' A}
 theorem preStrategy_body (f : PreStrategy T p) : y ∈ body f.subtree
-  ↔ ∃ (hy : y ∈ body T), ∀ (x : T), (hp : IsPosition x.val p) → (hb : y ∈ basicOpen x.val) →
-    ⟨y.get x.val.length, by apply hy; simp [basicOpen_concat, hb]⟩ ∈ f x hp := by
+  ↔ ∃ (hy : y ∈ body T), ∀ (x : T), (hp : IsPosition x.val p) → (hb : y ∈ principalOpen x.val) →
+    ⟨y.get x.val.length, by apply hy; simp [principalOpen_concat, hb]⟩ ∈ f x hp := by
   constructor <;> intro h
   · use body_mono f.subtree_sub h
-    intro x _ hy; specialize h (x ++ [y.get x.val.length]) (by simp [basicOpen_concat, hy])
+    intro x _ hy; specialize h (x ++ [y.get x.val.length]) (by simp [principalOpen_concat, hy])
     apply h.2 List.prefix_rfl
   · intro x hx; have hxT := h.1 _ hx
     use hxT; intro z a hpr hpo
     replace h := h.2 ⟨_, mem_of_append (mem_of_prefix hpr hxT)⟩ hpo
-    replace hx := basicOpen_mono hpr hx; rw [basicOpen_concat] at hx
+    replace hx := principalOpen_mono hpr hx; rw [principalOpen_concat] at hx
     obtain ⟨hx, rfl⟩ := hx; exact h hx
 theorem strategy_body (f : Strategy T p) : y ∈ body f.pre.subtree ↔ y ∈ body T ∧
-  ∀ (x : T), (hp : IsPosition x.val p) → y ∈ basicOpen x.val →
+  ∀ (x : T), (hp : IsPosition x.val p) → y ∈ principalOpen x.val →
   y.get x.val.length = (f x hp).val := by
   simp_rw [preStrategy_body, ← exists_prop, Set.mem_singleton_iff, ← SetCoe.ext_iff (b := f _ _)]
 end
 def consistent (x : BodySystemObj T) (S : StrategySystem T p) :=
   ∀ (y : T), (hp : IsPosition y.val p) → x.contains y.val
   → x.contains (S.str y.val.length y hp le_rfl).val'
-theorem mem_basicOpen_iff_bodySystem_contains {T : Trees} (x : List T.1) (y : body T.2) :
-  y.val ∈ basicOpen x ↔ (bodyEquivSystem.hom.app _ y).contains x := by
+theorem mem_principalOpen_iff_bodySystem_contains {T : Trees} (x : List T.1) (y : body T.2) :
+  y.val ∈ principalOpen x ↔ (bodyEquivSystem.hom.app _ y).contains x := by
   constructor <;> intro h
-  · apply List.ext_getElem?; intro n; rw [basicOpen_iff_restrict] at h
+  · apply List.ext_getElem?; intro n; rw [principalOpen_iff_restrict] at h
     simp_rw [bodyEquivSystem_hom_app_res_coe, ← h]
   · rw [h]; simp_rw [bodyEquivSystem_hom_app_res_coe, extend_sub]
 theorem bodyEquivSystem_strat {x} (S : StrategySystem T p) :
@@ -220,9 +219,9 @@ theorem bodyEquivSystem_strat {x} (S : StrategySystem T p) :
   simp only [strategy_body, Subtype.coe_prop, CompleteSublattice.mem_coe, true_and, consistent]
   show (∀ x : T, _) ↔ _ --add feature that congr! works without this?, (config := {typeEqs := true}) doesn't help
   congr! with y _ hc
-  apply mem_basicOpen_iff_bodySystem_contains
-  rw [← mem_basicOpen_iff_bodySystem_contains, ExtensionsAt.val', basicOpen_concat]
-  simp only [(mem_basicOpen_iff_bodySystem_contains y.val x).mpr hc, true_and]; rfl
+  apply mem_principalOpen_iff_bodySystem_contains
+  rw [← mem_principalOpen_iff_bodySystem_contains, ExtensionsAt.val', principalOpen_concat]
+  simp only [(mem_principalOpen_iff_bodySystem_contains y.val x).mpr hc, true_and]; rfl
 theorem bodyEquivSystem_strat' {x} (S : StrategySystem T p) :
   (bodyEquivSystem.inv.app _ x).val ∈ body (strategyEquivSystem.symm S).pre.subtree
   ↔ consistent x S := by

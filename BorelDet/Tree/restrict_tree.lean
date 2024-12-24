@@ -4,24 +4,25 @@ namespace GaleStewartGame.Tree
 open CategoryTheory
 
 noncomputable section
-universe u
-variable {S T U : Trees.{u}} {k m n : ℕ}
+variable {S T U : Trees} {k m n : ℕ}
+
 /-- Remove all nodes of a tree beyond level k -/
-@[simps! obj_fst] def res (k : ℕ) : Trees.{u} ⥤ Trees.{u} where
+@[simps! obj_fst] def res (k : ℕ) : Trees ⥤ Trees where
   obj S := @id Trees ⟨S.1, {
     val := {x | x ∈ S.2 ∧ x.length ≤ k}
     property := by abstract
       intro x a ⟨h1, h2⟩; use mem_of_append h1
-      simp_rw [List.length_append, List.length_singleton] at h2; omega
-  }⟩
+      simp_rw [List.length_append, List.length_singleton] at h2; omega }⟩
   map f := {
     toFun := fun x ↦ ⟨(f ⟨x.val, x.prop.1⟩).val, by
       constructor <;> simp only [SetLike.coe_mem, LenHom.h_length_simp, x.prop.2]⟩
     monotone' := fun _ _ h ↦ f.monotone' h
-    h_length := by simp only [LenHom.h_length_simp, Subtype.forall, implies_true, forall_const]
+    h_length := by
+      simp only [LenHom.h_length_simp, Subtype.forall, implies_true, forall_const]
   }
   map_id _ := rfl
   map_comp _ _ := rfl
+
 @[ext] lemma res_ext (x y : (res k).obj S) (h : x.val = y.val) : x = y := Subtype.ext h
 @[simp] lemma mem_res_obj (x : List T.1) :
   Membership.mem (γ := Tree T.1) ((Tree.res k).obj T).2 x ↔ x ∈ T.2 ∧ x.length ≤ k :=
@@ -77,11 +78,12 @@ def res_isColimit (k : ℕ) : Limits.IsColimit (res_cocone k) := by
     ext; simpa using congr_arg (fun x ↦ x.val.length) he
   · rintro ⟨x, ⟨h1, h2⟩⟩; use ⟨x.length, by omega⟩, ⟨x, ⟨h1, rfl⟩⟩; rfl
 def ev_res_cocone (k : ℕ) (S : Trees) : Limits.Cocone
-  (Discrete.functor (fun (i : Fin (k + 1)) ↦ resEq i) ⋙ (evaluation _ (Type u)).obj S) where
+  (Discrete.functor (fun (i : Fin (k + 1)) ↦ resEq i) ⋙ (evaluation _ _).obj S) where
   pt := (res k).obj S
   ι := Discrete.natTrans (fun ⟨n, h⟩ ↦ (resIncl (by omega)).app S)
-def ev_res_isColimit (k : ℕ) (S : Trees) : Limits.IsColimit (ev_res_cocone k S) :=
-  Limits.isColimitOfPreserves ((evaluation _ (Type u)).obj S) (res_isColimit k)
+universe u in --why necessary?
+def ev_res_isColimit (k : ℕ) (S : Trees) : Limits.IsColimit (ev_res_cocone.{u} k S) :=
+  Limits.isColimitOfPreserves ((evaluation _ _).obj S) (res_isColimit k)
 
 /-- A morphism is k-fixing if it is a bijection on the first k levels -/
 class Fixing (k : outParam ℕ) (f : S ⟶ T) : Prop where prop : IsIso ((res k).map f)
@@ -124,7 +126,7 @@ macro "synth_fixing" : tactic => `(tactic | first | done |
 instance fixingEq_of_fixing {f : S ⟶ T} [h : Fixing k f] : FixingEq k f :=
   (fixing_iff_fixingEq k f).mp h k le_rfl
 
-variable {S T U : Trees.{u}} (f : S ⟶ T) (g : T ⟶ U)
+variable {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
 theorem Fixing.inj (x y : S) (ht : Fixing x.val.length f := by abstract synth_fixing)
   (he : f x = f y) : x = y := by
   have hl : x.val.length = y.val.length := by

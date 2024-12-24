@@ -53,7 +53,7 @@ theorem defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tre
   (defensivePre G Player.zero).IsWinning := by
   intro a ha; rw [Player.payoff_zero,
     ← (isClosed_image_payoff.mp hC).closure_eq,
-    mem_closure_iff_nhds_basis (hasBasis_basicOpen a)]
+    mem_closure_iff_nhds_basis (hasBasis_principalOpen a)]
 
   intro x h; by_contra hfa; simp_rw [not_exists, not_and'] at hfa
   specialize ha (a.take (2 * (x.length / 2)) ++ [a.get (2 * (x.length / 2))]) (by simp)
@@ -61,8 +61,8 @@ theorem defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tre
     (by synth_isPosition) ha
   apply AllWinning.existsWinning _ (hP.sub _); apply wonPosition_iff_disjoint.mpr
   rw [← Set.subset_empty_iff]; intro a' ⟨h1, h2⟩; apply hfa a'
-  · simp [ExtensionsAt.val'] at h1; apply basicOpen_mono _ h1
-    rw [(basicOpen_iff_restrict _ _).mp h]; simp; omega
+  · simp [ExtensionsAt.val'] at h1; apply principalOpen_mono _ h1
+    rw [(principalOpen_iff_restrict _ _).mp h]; simp; omega
   · rw [Player.residual_odd _ _ (by simp; omega)] at h2; simpa using h2
 
 theorem defensive_winning_isOpen (hC : IsOpen G.payoff) (hP : IsPruned G.tree) :

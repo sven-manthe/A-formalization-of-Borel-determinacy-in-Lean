@@ -5,9 +5,8 @@ namespace GaleStewartGame.Tree
 open Classical CategoryTheory
 
 noncomputable section
-universe u
 variable {k m n : ℕ}
-abbrev mkPointedMor' {S T : Trees.{u}} (f : S ⟶ T) (y : T)
+abbrev mkPointedMor' {S T : Trees} (f : S ⟶ T) (y : T)
   (h : Fixing y.val.length f := by abstract synth_fixing) :
   mkPointed (Tree.pInv f y) ⟶ mkPointed y := ⟨f, by simp⟩
 
@@ -52,7 +51,7 @@ def extensionsRes T :
   extensions.val' (cast (by rw [h]) a : extensions.obj ((pointedRes m).obj S))
   = extensions.val' a := by subst h; rfl
 
-variable {S T : Trees.{u}} (f : S ⟶ T) (x : S) (y : T)
+variable {S T : Trees} (f : S ⟶ T) (x : S) (y : T)
 /-- if f is (|x|+1)-fixing, then it induces a bijection on extensions of x -/
 def pointedRes_iso (hx : Fixing (x.val.length + 1) f := by abstract synth_fixing) :
   (pointedRes (x.val.length + 1)).obj (mkPointed x)

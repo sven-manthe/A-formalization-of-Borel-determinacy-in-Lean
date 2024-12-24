@@ -135,7 +135,7 @@ lemma winnable : H.Winnable := by
   apply AllWinning.existsWinning _ ((hyp.pruned.sub _).sub _)
   rw [List.prefix_iff_eq_take] at hux
   simpa [AllWinning, game_payoff, Set.eq_univ_iff_forall, ← hux] using
-    fun a _ ↦ ⟨u, ⟨hu, basicOpen_append_nil a u⟩⟩
+    fun a _ ↦ ⟨u, ⟨hu, principalOpen_append_nil a u⟩⟩
 lemma exists_prefix : ∃ n h, (H.take n h).Won := ⟨H.x.val.length, by simpa using H.won⟩
 def minLength := Nat.find H.exists_prefix
 @[simp] lemma minLength_le : H.minLength ≤ H.x.val.length (α := no_index _) :=
@@ -178,7 +178,7 @@ lemma u_zero : H.u.val[0]'(by simpa [List.length_pos] using H.u_nil)
         simp [List.tail_append, WLift.u_nil]
 attribute [simp_lengths] toLift_toPreLift toLift'_toLift
 
-universe u v
+universe u v in
 lemma hEq_fst {α α' : Sort u} {β : α → Sort v} {β' : α' → Sort v}
   (x : @PSigma α β) (y : @PSigma α' β') (h : α = α') (h' : HEq β β') (h'' : HEq x y) :
   HEq x.fst y.fst := by subst h; cases h'; cases h''; rfl

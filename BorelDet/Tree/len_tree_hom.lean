@@ -7,7 +7,6 @@ open CategoryTheory
 
 namespace GaleStewartGame.Tree
 noncomputable section
-universe u
 
 /-- The objects of the category of trees -/
 def Trees := Σ A, Tree A
@@ -56,8 +55,8 @@ theorem inv_toFun {S T : Trees} (f : S ⟶ T) [IsIso f] :
 
 @[simp, simp_lengths] theorem h_length_simp (f : S ⟶ T) (x : S) :
   (f x).val.length (α := no_index _) = x.val.length (α := no_index _) := f.h_length x
-@[simp] theorem h_length_inv (f : S ⟶ T) [IsIso (C := Type u) (f.toFun)] (x : T) :
-  (inv (C := Type u) f.toFun x).val.length = x.val.length := by
+@[simp] theorem h_length_inv (f : S ⟶ T) [IsIso (C := Type*) (f.toFun)] (x : T) :
+  (inv (C := Type _) f.toFun x).val.length = x.val.length := by
   simp [← h_length_simp f]
 @[simp] theorem map_nil (f : S ⟶ T) (h : [] ∈ S.2) : (f ⟨[], h⟩).val = [] := by
   apply List.eq_nil_of_length_eq_zero; simp

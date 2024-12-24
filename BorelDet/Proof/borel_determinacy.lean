@@ -152,7 +152,7 @@ theorem borel_unravelable : borel _ ≤ unravelableAsMeasurable T :=
 end BorelDet'
 
 /-- Borel games are determined -/
-theorem borel_determinacy (G : Games) (h : MeasurableSet[borel _] G.2.1.payoff) :
+theorem Games.borel_determinacy (G : Games) (h : MeasurableSet[borel _] G.2.1.payoff) :
   G.2.1.IsDetermined := by
   simpa [BorelDet'.extendToGame] using
     (BorelDet'.borel_unravelable G.tree _ h (𝟙 G.tree)).isDetermined

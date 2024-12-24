@@ -1,21 +1,19 @@
 import BorelDet.Proof.covering
 
-namespace GaleStewartGame.Covering
+namespace GaleStewartGame
 open Classical CategoryTheory
 open Tree
+namespace Covering
 
 noncomputable section
-universe u
-variable {p : Player} {F : ℕᵒᵖ ⥤ PTrees.{u}} {K k m n m' n' : ℕ}
+variable {p : Player} {F : ℕᵒᵖ ⥤ PTrees} {K k m n m' n' : ℕ}
   (hF : ∀ k, Fixing (K + k) (F.map (homOfLE k.le_succ).op))
 
 include hF in lemma transition_fixing_full {m n} (h : m ≤ n) :
   Fixing (K + m) (F.map (homOfLE h).op) := by
   obtain ⟨k, rfl⟩ := le_iff_exists_add.mp h
-  rw [← recComp.functor]; apply recComp_induction
-  intro _; apply fixing_id
-  intros; apply fixing_comp <;> assumption
-  intro n; exact fixing_mon _ (hF (m + n)) (by omega)
+  rw [← recComp.functor]; apply recComp_induction _ (fun _ ↦ fixing_id _ _)
+    (fun _ _ ↦ fixing_comp _ _ _) _ _ _ (fun n ↦ fixing_mon _ (hF (m + n)) (by omega))
 include hF in lemma transition_fixing {m n} (h : m ≤ n) :
   Fixing m (F.map (homOfLE h).op) := by
   apply fixing_mon; apply transition_fixing_full hF h; omega
@@ -33,7 +31,7 @@ instance limCone_π_fixing_full k : Tree.Fixing (K + k) (limCone_π_map hF k) :=
   proj_fixing (F ⋙ PTreeForget) K (fun n ↦ (hF n).1) k
 
 open ResStrategy
-@[simp] theorem fromMap_comp' k {S T U : Trees.{u}} (f : S ⟶ T) (g : T ⟶ U)
+@[simp] theorem fromMap_comp' k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
   (hf : Tree.Fixing k f) (hg : Tree.Fixing k g)
   (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := by

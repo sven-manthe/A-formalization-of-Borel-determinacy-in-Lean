@@ -178,10 +178,10 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
     conv => lhs; simp (config := {singlePass := true}) only [List.getElem_take' _ _ hn',
       Lift.liftVal_take_short]
     simp [Lift.liftVeryShort]
-    rw [List.getElem_append_left (by synth_isPosition)]
+    rw [List.getElem_append_left (by abstract synth_isPosition)]
     erw [H.x_mem_tree_short (by abstract synth_isPosition) (by abstract synth_isPosition)]
     congr!
-    · rw [pInv_treeHom_val _ _ (by synth_isPosition), Lift.liftVal_take_init]
+    · rw [pInv_treeHom_val _ _ (by abstract synth_isPosition), Lift.liftVal_take_init]
       · simp
       · omega
     apply Fixing.inj (f := π) (ht := by abstract synth_fixing); ext1; simp
@@ -196,7 +196,7 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
       congr! <;> [skip; ext1] <;> simp
   · apply extensionsAt_ext_fst (x := Tree.take n h.lift'.lift) _ _ (by abstract synth_isPosition)
     by_cases hW : (H.take n (by abstract omega)).preLift.Won
-    · rw [h.lift'.liftVal_lift_get (by synth_isPosition)]; simp
+    · rw [h.lift'.liftVal_lift_get (by abstract synth_isPosition)]; simp
       rw [H.get_eq_get_take _ (by abstract omega),
         x_mem_tree _ (by abstract synth_isPosition) (by abstract synth_isPosition)]
       dsimp [extension, PreLift.extension]; split
@@ -208,7 +208,7 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
           congr 1; ext1
           · simp; congr; synth_isPosition
           · apply PreLift.WLift.toLift_mono; simp)
-      · rename_i _ hif; cases hif (by simp [dropLast] at hW ⊢; convert hW; synth_isPosition)
+      · rename_i _ hif; cases hif (by abstract simp [dropLast] at hW ⊢; convert hW; synth_isPosition)
     · let H' := PreLift.WLift.mk _ h; have hux := H'.u_spec'
       have hul : H'.u.val.length > n - (2 * k + 1) := by
         simp [PreLift.Won] at hW; by_contra
@@ -220,18 +220,18 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
       have hR := mem_getTree (H.R ⟨h.lift'.liftVal.take n, pf2⟩ (by
         synth_isPosition)).valT'
       simp at hR
-      rw [ExtensionsAt.val'_take_of_le _ (by synth_isPosition)] at hR --TODO abstract causes type mismatch above
+      rw [ExtensionsAt.val'_take_of_le _ (by abstract synth_isPosition)] at hR
       simp (disch := omega) [List.take_take] at hR
-      erw [h.lift'.liftVal_take_short (by synth_isPosition)] at hR
+      erw [h.lift'.liftVal_take_short (by abstract synth_isPosition)] at hR
       erw [H'.getTree_liftShort] at hR
       simp at hR
-      rw [mem_pullSub_short (by synth_isPosition)] at hR
+      rw [mem_pullSub_short (by abstract synth_isPosition)] at hR
       replace hR := hR.1; simp [List.prefix_iff_eq_take] at hR
       conv => rhs; erw [← ExtensionsAt.val'_get_last,
         ← List.getElem_map Prod.fst (h := by simp)]
       simp_rw (config := {singlePass := true}) [PreLift.Won.lift'_toLift, hR]
-      simp; erw [List.getElem_append_right (by synth_isPosition)]
-      conv => lhs; erw [h.lift'.liftVal_lift_get (by synth_isPosition)]
+      simp; erw [List.getElem_append_right (by abstract synth_isPosition)]
+      conv => lhs; erw [h.lift'.liftVal_lift_get (by abstract synth_isPosition)]
       simp
       rw [List.prefix_iff_eq_take] at hux; simp_rw (config := {singlePass := true}) [hux]
       simp; congr; synth_isPosition
@@ -325,6 +325,7 @@ attribute [simp_lengths] bodyTake_x
 @[simp] lemma takeLift_game : (bodyTake y n).preLift.game = (bodyTake y 0).preLift.game := by
   rw [← (takeLift_mono y).mpr (Nat.zero_le n), PreLift.game_take]
 
+set_option maxHeartbeats 400000 in
 lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
   ∃ m, (bodyTake y m).preLift.Won := by
   by_cases h' : ∃ m, (bodyTake y m).preLift.Won; exact h'
@@ -351,7 +352,7 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
   obtain ⟨u, hu1, hu2⟩ := hw.2
   use u.length; simp [PreLift.Won]; use u, hu1
   simp [← Stream'.take_drop, List.prefix_iff_eq_take, Stream'.take_take, - Function.iterate_succ]
-  rw [basicOpen_iff_restrict] at hu2; convert hu2 using 2
+  rw [principalOpen_iff_restrict] at hu2; convert hu2 using 2
   simp [List.take_drop]; rw [← Stream'.drop_append_of_le_length _ _ (by simp)]
   generalize_proofs pf; suffices pf.num ≤ n by simp [this]
   convert h.num_le_length using 1

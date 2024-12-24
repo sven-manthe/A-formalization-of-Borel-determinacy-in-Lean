@@ -1,10 +1,10 @@
 import BorelDet.Game.gale_stewart
 
-universe u
 lemma choose_eq {α : Type*} {p q : α → Prop} (hpq : ∀ a, p a ↔ q a) (h : ∃ a, p a) :
   h.choose = (by simpa [hpq] using h : ∃ a, q a).choose := by
   have : p = q := funext fun x ↦ propext (hpq x)
   subst this; rfl
+universe u in
 lemma choose_eq' {α β : Type u} {p : α → Prop} {q : β → Prop} (hab : α = β)
   (hpq : ∀ a, p a ↔ q (cast hab a)) (h : ∃ a, p a) :
   HEq h.choose (by subst hab; simpa [hpq] using h : ∃ b, q b).choose := by
@@ -155,12 +155,14 @@ lemma hEq_drop_take {y} (hy : y ∈ subAt G.tree (x.take h.num)) (hxy) :
   HEq (Tree.drop (h.shrink.extend y).num
   (⟨List.take h.num x ++ y, hxy⟩ : G.tree)) (⟨y, hy⟩ : subAt _ _) := by
   rw [← cast_eq_iff_heq (e := by simp [lem1])]; simp [val_cast, lem2, lem1]
+universe u in
 lemma congr_2_heq {α α'} {β : α → Prop} {γ : α → Type u} {β' : α → Prop} {γ' : α → Type u}
   {a : α} {a' : α'} (ha : HEq a a') (f : ∀ a : α, β a → γ a)
   (f' : ∀ a'' : α', β' (cast (by cases ha; rfl) a'') → γ' (cast (by cases ha; rfl) a''))
   (b : β a) (b' : β' (cast (by cases ha; rfl) a'))
   (hb : β = β') (hct : γ = γ') (hf : HEq f f') : HEq (f a b) (f' a' b') := by
   cases ha; subst hct hb; cases hf; rfl
+universe u in
 lemma congr_2_heq' {α α'} {β : α → Prop} {γ : α → Type u} {β' : α' → Prop} {γ' : α' → Type u}
   {a : α} {a' : α'} (ha : HEq a a') (f : ∀ a : α, β a → γ a)
   (f' : ∀ a' : α', β' a' → γ' a')

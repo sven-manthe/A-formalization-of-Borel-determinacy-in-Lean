@@ -9,7 +9,7 @@ variable {A : Type*} (S T : Tree A)
 
 /-- The body of a tree T, also written [T] in the literature, is the set of infinite branches,
   implemented as `Stream` -/
-def body : Set (Stream' A) := { y | ∀ x, y ∈ basicOpen x → x ∈ T }
+def body : Set (Stream' A) := { y | ∀ x, y ∈ principalOpen x → x ∈ T }
 @[gcongr] theorem body_mono {S T : Tree A} (h : S ≤ T) : body S ⊆ body T :=
   fun _ h' x y ↦ h (h' x y)
 @[simp] theorem take_mem_body {T : Tree A} {x} (h : x ∈ body T) n : x.take n ∈ T := h _ (by simp)
@@ -17,14 +17,14 @@ def body : Set (Stream' A) := { y | ∀ x, y ∈ basicOpen x → x ∈ T }
 attribute [simp_lengths] body.take_coe
 theorem mem_body_of_take m (T : Tree A) (x : Stream' A) (h : ∀ n ≥ m, x.take n ∈ T) :
   x ∈ body T := by
-  intro y hy; rw [basicOpen_iff_restrict] at hy
+  intro y hy; rw [principalOpen_iff_restrict] at hy
   simpa [← hy] using Tree.take_mem ⟨_, h (m + y.length) (by omega)⟩ (n := y.length)
 
 /-- Taking bodies preserves arbitrary intersections -/
 def bodyInfHom : sInfHom (Tree A) (Set (Stream' A)) where
   toFun := Tree.body
   map_sInf' := by
-    intro s; ext a; simp only [body, basicOpen, Set.image_univ, Set.mem_range,
+    intro s; ext a; simp only [body, principalOpen, Set.image_univ, Set.mem_range,
       CompleteSublattice.mem_sInf, forall_exists_index, Set.sInf_eq_sInter, Set.sInter_image,
       Set.mem_iInter]
     constructor
@@ -37,7 +37,7 @@ def bodyInfHom : sInfHom (Tree A) (Set (Stream' A)) where
 @[simp] theorem body_isClosed : IsClosed (body T) := by
   simp_rw [← isOpen_compl_iff, isOpen_iff_mem_nhds, mem_nhds_iff]
   intro a ha; simp [body] at ha; let ⟨x, ha1, ha2⟩ := ha
-  exact ⟨basicOpen x, fun a ah h ↦ ha2 (h _ ah), basicOpen_isOpen x, ha1⟩
+  exact ⟨principalOpen x, fun a ah h ↦ ha2 (h _ ah), principalOpen_isOpen x, ha1⟩
 
 @[simp] theorem subAt_body (x : List A) :
   body (subAt T x) = (x ++ₛ ·)⁻¹' (body T) := by
@@ -62,7 +62,7 @@ theorem body.append_con {T : Tree A} (x : List A) : Continuous (@body.append A T
 @[congr] lemma range_body_append (x y : List A) (h : x = y) :
   Set.range (@body.append _ T x) = Set.range (@body.append _ T y) := by congr!
 @[simp] lemma subtype_body_append x :
-  Subtype.val '' Set.range (@body.append _ T x) = basicOpen x ∩ body T := by
+  Subtype.val '' Set.range (@body.append _ T x) = principalOpen x ∩ body T := by
   ext a; constructor
   · rintro ⟨_, ⟨⟨a, rfl⟩, rfl⟩⟩; simpa using a.prop
   · rintro ⟨⟨b, rfl⟩, ha⟩; use ⟨x ++ₛ b, ha⟩, ⟨⟨b, by simpa⟩, rfl⟩
@@ -89,7 +89,7 @@ end
     subst hzE'; simp at hzE
     rw [← Stream'.append_take_drop x.length y, hzE]; simp
     intro z hz; specialize h (x ++ z); rw [← Stream'.append_take_drop x.length y, hzE] at h
-    simpa using h (by rwa [basicOpen_append])
+    simpa using h (by rwa [principalOpen_append])
   · rintro ⟨a, haB, rfl⟩; apply mem_body_of_take x.length
     intro n hn; obtain ⟨m, rfl⟩ := le_iff_exists_add.mp hn; rw [← Stream'.append_take]
     simp [haB]
@@ -104,16 +104,16 @@ theorem IsPruned.body_ne_iff_ne {T : Tree A} (h : IsPruned T) :
     use a; intro x h'; suffices x = (f x.length).val by rw [this]; exact (f x.length).prop
     induction' x using List.reverseRecOn with x b ih
     · dsimp [f]
-    · specialize ih (basicOpen_sub _ _ h'); rw [List.length_append, List.length_eq_one.mpr ⟨b, rfl⟩]
+    · specialize ih (principalOpen_sub _ _ h'); rw [List.length_append, List.length_eq_one.mpr ⟨b, rfl⟩]
       obtain ⟨z, h'⟩ := h'; apply_fun (fun y ↦ y.get x.length) at h'; simp at h'
       simp_rw [h', a]; congr!; simp [Stream'.get]
-theorem isPruned_iff_basicOpen_ne {T : Tree A} :
-  IsPruned T ↔ ∀ x : T, (basicOpen x ∩ body T).Nonempty := by
+theorem isPruned_iff_principalOpen_ne {T : Tree A} :
+  IsPruned T ↔ ∀ x : T, (principalOpen x ∩ body T).Nonempty := by
   constructor
   · intro hP x; obtain ⟨y, h⟩ := (hP.sub x.val).body_ne_iff_ne.mpr (by simp)
     use x.val ++ₛ y; simpa using h
   · intro h x; obtain ⟨y, hx, hT⟩ := h x; use y.get x.val.length
-    rw [basicOpen_iff_restrict] at hx; nth_rw 1 [hx, ← Stream'.take_succ']
+    rw [principalOpen_iff_restrict] at hx; nth_rw 1 [hx, ← Stream'.take_succ']
     exact hT _ (extend_sub _ y)
 
 end GaleStewartGame.Tree

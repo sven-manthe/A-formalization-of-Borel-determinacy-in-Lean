@@ -7,14 +7,12 @@ attribute [simp_lengths]
   List.length_take List.length_drop List.length_map List.length_tail
 
 variable {α β I : Type*} {γ : Type* → Type*} {a : α}
-universe u
 
 --used in gale stewart and undetermined
 @[simp] theorem Nat.add_div' (k m n : ℕ) (h : n < k) : (k * m + n) / k = m := by
   apply Nat.div_eq_of_lt_le <;> linarith --omega instead of linarith fails for either subgoal
 @[simp] theorem Nat.add_sub_sub_of_le {m n p : ℕ} (mn : m ≤ n) (np : n ≤ p) :
-  (n - m) + (p - n) = p - m := by
-  zify [mn, np, mn.trans np]; simp
+  (n - m) + (p - n) = p - m := by zify [mn, np, mn.trans np]; ring
 @[simp] lemma div_add_self (n : ℕ) : (n + n) % 2 = 0 := by omega
 
 lemma Set.hEq_of_image_eq {α} {A A' : Set α} (h : A = A') {B : Set A} {B' : Set A'}
@@ -80,23 +78,19 @@ noncomputable def uncurryProp {α : Type*} {β : α → Prop} {γ : ∀ a, β a 
 open Cardinal
 theorem equals_nonempty_some {A : Set α} {ne : A.Nonempty} (h : a = ne.some) : a ∈ A := --avoid
   cast (h.symm ▸ rfl) ne.some_mem
+universe u in
 theorem Cardinal.choose_injection {α β : Type u} (f : α → Set β) (h : ∀ a, #α ≤ #(f a)) :
-  ∃ g : α → β, g.Injective ∧ ∀ a, g a ∈ f a := by
-  have ⟨wo, hwo, hwol⟩ := Cardinal.ord_eq α
-  let recg (a : α) (recg : (b : α) → wo b a → β) : β := by
-    let exclude := Set.range (uncurryProp recg)
-    have exclsmall : #exclude ≤ (Ordinal.typein wo a).card :=
-      Cardinal.mk_le_of_surjective Set.surjective_onto_range
-    have h' := lt_of_lt_of_le (lt_of_le_of_lt exclsmall (Cardinal.card_typein_lt wo a hwol)) (h a)
-    have h''' : Set.Nonempty (f a \ exclude) := by
-      apply Set.nonempty_iff_ne_empty.mpr; intro h
-      exact not_le_of_lt h' (Cardinal.mk_le_mk_of_subset (Set.diff_eq_empty.mp h))
-    exact h'''.some
-  use hwo.fix wo recg; constructor --since mathlib update need wo, should be implicit
-  · intro a a' he; wlog h : wo a a'
-    · by_contra he2
-      have h : wo a' a := by have := hwo.trichotomous a a'; tauto
-      apply he2; symm; apply this _ _ _ _ _ (Eq.symm he) <;> assumption
-    · rw [hwo.fix_eq wo recg a'] at he
-      cases (equals_nonempty_some he).2 ⟨⟨a, h⟩, rfl⟩
-  · intro a; rw [hwo.fix_eq wo recg]; exact Set.diff_subset (Set.Nonempty.some_mem _)
+    ∃ g : α → β, g.Injective ∧ ∀ a, g a ∈ f a := by
+  let ⟨wo, hwo, hwol⟩ := Cardinal.ord_eq α
+  let recg (a : α) (recg : (b : α) → wo b a → β) : β :=
+    (Set.nonempty_iff_ne_empty.mpr fun hf ↦
+      not_le_of_lt (lt_of_lt_of_le (lt_of_le_of_lt
+      (Cardinal.mk_le_of_surjective Set.surjective_onto_range :
+        #(Set.range (uncurryProp recg)) ≤ _)
+      (Cardinal.card_typein_lt wo a hwol)) (h a))
+      (Cardinal.mk_le_mk_of_subset (Set.diff_eq_empty.mp hf))).some
+  refine ⟨hwo.fix (r := wo) recg, ?_, ?_⟩
+  · intro a a' he
+    rcases hwo.trichotomous a a' with h | h | h <;> [symm at he; exact h; skip] <;>
+     (rw [hwo.fix_eq] at he; cases (equals_nonempty_some he.symm).2 ⟨⟨_, h⟩, rfl⟩)
+  · intro a; rw [hwo.fix_eq]; exact Set.diff_subset (Set.Nonempty.some_mem _)

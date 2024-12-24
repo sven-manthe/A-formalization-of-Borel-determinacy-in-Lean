@@ -6,10 +6,9 @@ namespace GaleStewartGame.Tree
 open Classical CategoryTheory
 
 noncomputable section
-universe u
-variable {A B : Type u} {m k n : ℕ}
+variable {A B : Type*} {m k n : ℕ}
 /-- Object function of adjoint of `res k` -/
-def constTreeObj (k : ℕ) (A : Type u) : Tree A where
+def constTreeObj (k : ℕ) (A : Type*) : Tree A where
   val := {x | ∃ m ≤ k, x ∈ Set.range (List.replicate m)}
   property := by
     rintro x a ⟨m, hm, ⟨b, h⟩⟩; rcases m with _ | m
@@ -32,7 +31,7 @@ theorem headD_nonempty (x : constTreeObj k A) (h : x.val ≠ []) : headD x = x.v
 @[simp] theorem constTree_zero (x : constTreeObj 0 A) : x.val = [] := by
   apply List.eq_nil_of_length_eq_zero; linarith [constTree_length x]
 /-- Adjoint of `res k` -/
-def constTree (k : ℕ) : Type u ⥤ Trees where
+def constTree (k : ℕ) : Type* ⥤ Trees where
   obj A := ⟨A, constTreeObj k A⟩
   map f := {
     toFun := fun ⟨x, h⟩ ↦ ⟨List.map f x, by
@@ -42,7 +41,8 @@ def constTree (k : ℕ) : Type u ⥤ Trees where
   }
   map_id _ := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext x.val.map_id
   map_comp f g := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (List.map_map g f x.val).symm
-@[simp] theorem head_constTree_map (k : ℕ) (f : A → B) {x : constTreeObj k A} (h : x.val ≠ []) :
+@[simp] theorem head_constTree_map {B} (k : ℕ) (f : A → B)
+  {x : constTreeObj k A} (h : x.val ≠ []) :
   List.head (((constTree k).map f) x).val (LenHom.map_ne_nil _ h)
   = f (List.head x.val h) := by simp [constTree, ← rem_toFun]
 def resEq_unit k : 𝟭 _ ⟶ constTree k ⋙ resEq k where

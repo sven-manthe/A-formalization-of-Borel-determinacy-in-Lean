@@ -204,7 +204,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
       · simp at hn; simp [Lift.liftVal, ← hn]; simp [hn]
       · rw [H.liftVal.eq_take_concat (2 * k + 1 + (n + 1)) (by synth_isPosition)]
         have hnat : 2 * k + 1 + (n + 1) = (2 * k + 2) + n := by omega
-        simp [- List.take_concat_get']; use ih; constructor
+        simp [- List.take_append_getElem]; use ih; constructor
         · simp [getTree_eq' _ ih, hn]
           simp_rw [hnat]; rw [List.getElem_drop', ← List.take_drop, List.take_concat_get']
           simpa (disch := omega) [List.take_take] using take_mem ⟨_, H.conLong⟩
@@ -231,9 +231,9 @@ attribute [simp_lengths] extend_toPreLift
 def WonPos := {u | ∃ S, (H.extend S).PreWonPos u}
 @[simps (config := {isSimp := false})] def game : Game A where
   tree := subAt T (H.x.val.take (2 * k + 1))
-  payoff := Subtype.val⁻¹' ⋃ u ∈ H.WonPos, basicOpen u
+  payoff := Subtype.val⁻¹' ⋃ u ∈ H.WonPos, principalOpen u
 lemma game_open : IsOpen H.game.payoff := IsOpen.preimage
-  continuous_subtype_val (isOpen_iUnion fun _ ↦ isOpen_iUnion fun _ ↦ basicOpen_isOpen _)
+  continuous_subtype_val (isOpen_iUnion fun _ ↦ isOpen_iUnion fun _ ↦ principalOpen_isOpen _)
 lemma extend_take h S : (H.take n h).extend S =
   (H.extend (cast (by simp [List.take_take, h]) S)).take n h := by
   ext1; rfl; simp [extend]; symm; apply cast_subtree (by simp [List.take_take, h]) rfl

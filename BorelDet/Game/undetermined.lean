@@ -19,7 +19,7 @@ def Player.ownTree (p : Player) (a : Stream' A) : Strategy (⊤ : Tree A) p :=
     cases p <;> simp [ownTree, Player.toNat, Stream'.get]
   intro xr hx; induction' xr using List.reverseRecOn with xr b ih
   · simp
-  · specialize ih (basicOpen_sub xr [b] hx); by_cases hp : IsPosition xr p
+  · specialize ih (principalOpen_sub xr [b] hx); by_cases hp : IsPosition xr p
     · apply (subtree_compatible_iff _ ⟨_, ih⟩ hp).mpr
       simp_rw [Set.mem_singleton_iff, ownTree, subtree_incl_coe, ← h (xr.length / 2)]
       suffices b = x.get xr.length by cases p <;> (simp_all [IsPosition]; congr; omega)

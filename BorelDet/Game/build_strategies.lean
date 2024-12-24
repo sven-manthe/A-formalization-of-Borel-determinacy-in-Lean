@@ -104,11 +104,11 @@ theorem sew_body (x : Stream' A) a :
   x.cons a ∈ body (PreStrategy.sew f).subtree ↔ ∃ h, x ∈ body (f a h).subtree := by
   constructor <;> intro h
   · use (h _ (by simp)).1; intro y hy
-    specialize h ([a] ++ y) ((basicOpen_append _ _ _).mpr hy)
+    specialize h ([a] ++ y) ((principalOpen_append _ _ _).mpr hy)
     rw [List.singleton_append, sew_subtree] at h; exact h.2
   · intro y hy; rcases y with (_ | ⟨a', y⟩)
     · simp; apply mem_of_append; exact (h.2 [] (by simp)).1
-    · simp [basicOpen_cons] at hy; obtain ⟨rfl, hy⟩ := hy
+    · simp [principalOpen_cons] at hy; obtain ⟨rfl, hy⟩ := hy
       rw [sew_subtree]; use h.1; exact h.2 _ hy
 variable {G : Game A} (f : ∀ a, [a] ∈ G.tree → PreStrategy (G.residual [a]).tree Player.zero)
 theorem sew_isWinning (h : ∀ a h, (f a h).IsWinning) :
@@ -147,11 +147,11 @@ def firstMove : PreStrategy T Player.zero
   · intro h; have heq : a = a' := by
       specialize h [a'] (by simp); rw [firstMove_subtree] at h; exact h.1
     subst heq; use rfl
-    intro y hy; specialize h ([a] ++ y) ((basicOpen_append _ _ _).mpr hy)
+    intro y hy; specialize h ([a] ++ y) ((principalOpen_append _ _ _).mpr hy)
     rw [List.singleton_append, firstMove_subtree] at h; exact h.2
   · rintro ⟨rfl, h⟩ y hy; rcases y with (_ | ⟨a', y⟩)
     · simp; exact mem_of_append (h [] (by simp)).1
-    · simp [basicOpen_cons] at hy; obtain ⟨rfl, hy⟩ := hy
+    · simp [principalOpen_cons] at hy; obtain ⟨rfl, hy⟩ := hy
       rw [firstMove_subtree]; exact ⟨rfl, h _ hy⟩
 variable {G : Game A} (h : [a] ∈ G.tree) (s : PreStrategy (G.residual [a]).tree Player.one)
 @[simp] theorem firstMove_isWinning :
@@ -217,7 +217,7 @@ lemma wonPosition_iff_disjoint' {x} :
   simp [WonPosition, AllWinning, ← Set.disjoint_compl_left_iff_subset,
     Set.disjoint_iff_inter_eq_empty, Set.inter_comm]
 lemma wonPosition_iff_disjoint {x} :
-  G.WonPosition x p ↔ basicOpen x ∩ (p.swap.residual x).payoff G = ∅ := by
+  G.WonPosition x p ↔ principalOpen x ∩ (p.swap.residual x).payoff G = ∅ := by
   simpa [← Set.image_val_inj, Set.inter_assoc, ← Set.inter_diff_assoc] using
     wonPosition_iff_disjoint'
 

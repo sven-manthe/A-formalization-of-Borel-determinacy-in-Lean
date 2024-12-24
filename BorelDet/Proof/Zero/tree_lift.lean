@@ -110,7 +110,7 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
       by_cases ih'' : ∃ h, (Ht.lift h).Losable
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Losable := ih''.2
         simp at ih'
-        have hm := H.x_mem_tree' (by omega) (by synth_isPosition) --TODO abstract omega causes function expected and abstract synth_isPosition causes type mismatch above
+        have hm := H.x_mem_tree' (by abstract omega) (by abstract synth_isPosition)
         simp [hn, extension, Lift.extension, hW, ih'] at hm
         generalize_proofs _ _ hL hp at hm
         convert (hL.extension_losable hp).1; ext1
@@ -118,10 +118,10 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
         · rfl
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Winnable :=
           fun hW ↦ ih'' ⟨by dsimp [Ht]; synth_isPosition, ⟨ih, hW⟩⟩
-        have hm := H.x_mem_tree' (by omega) (by synth_isPosition) --TODO abstract omega causes function expected and abstract synth_isPosition causes type mismatch above
+        have hm := H.x_mem_tree' (by abstract omega) (by abstract synth_isPosition)
         simp [hn, extension] at hm
         rw [Lift.extension_winnable _ _ _ hW] at hm
-        convert hW.extension_conLong (by dsimp [Ht] at *; synth_isPosition) --TODO abstract here causes type mismatch above
+        convert hW.extension_conLong (by abstract dsimp [Ht] at *; synth_isPosition)
           ((strategyEquivSystem H.R).str _)
         ext1
         · ext1; simp_rw [hm]; rfl
@@ -152,7 +152,7 @@ lemma x_mem_tree_short' h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) P
     · show _ = (π _).val; simp
     · simp [ResStrategy.fromMap]; rfl
   · ext1
-    simp [← List.take_concat_get', ExtensionsAt.val']; congr <;> simp [PreLift.liftShort];
+    simp [← List.take_append_getElem, ExtensionsAt.val']; congr <;> simp [PreLift.liftShort];
     · rw [ExtensionsAt.val'_take_of_eq] <;> simp
     · rw [ExtensionsAt.val'_get_last_of_eq _ (by simp)]; rfl
 lemma x_mem_tree_short h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Player.zero) :

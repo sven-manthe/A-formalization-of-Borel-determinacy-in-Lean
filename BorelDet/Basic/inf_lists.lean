@@ -46,7 +46,7 @@ lemma take_add : a.take (m + n) = a.take m ++ (a.drop m).take n := by
 lemma map_take : (a.take n).map f = (a.map f).take n := by
   apply List.ext_getElem <;> simp
 
-@[simp (1100)] --TODO
+@[simp (1100)]
 theorem get_drop' (n m : ℕ) (s : Stream' A) : get (drop m s) n = get s (m + n) := by
   simp [add_comm]
 lemma take_drop : (a.drop m).take n = (a.take (m + n)).drop m := by
@@ -60,9 +60,10 @@ lemma drop_append_of_le_length (x : List A) (a : Stream' A) {n : ℕ} (h : n ≤
     have hm' : m = (x.drop n).length := by simp [hm]
     simp_rw [get_drop', ← add_assoc, ← hm, get_append_right, hm', get_append_right]
 
-attribute [simp_lengths] Stream'.length_take
 --in PR until here
 --compare PiNat, CantorScheme
+
+attribute [simp_lengths] Stream'.length_take
 
 namespace Discrete
 @[simp] lemma append_inf_compose (x y : List A) :
@@ -72,43 +73,43 @@ namespace Discrete
   (y ++ₛ ·)⁻¹' ((x ++ₛ ·)⁻¹' T) = ((x ++ y) ++ₛ ·)⁻¹' T := by
   simp [← Set.preimage_comp]
 
-def basicOpen : Set (Stream' A) := Set.range (x ++ₛ ·)
-@[simp] theorem basicOpen_nil : @basicOpen A [] = Set.univ := by simp [basicOpen]
-@[simp] theorem basicOpen_append :
-  x ++ₛ a ∈ basicOpen (x ++ y) ↔ a ∈ basicOpen y := by simp [basicOpen]
-@[simp] theorem basicOpen_append_nil : x ++ₛ a ∈ basicOpen x := by
-  simpa using basicOpen_append a x []
-@[simp] theorem basicOpen_cons_nil (a : A) (as : Stream' A) : as.cons a ∈ basicOpen [a] := by
-  apply basicOpen_append_nil
-@[simp] theorem extend_sub : a ∈ basicOpen (a.take n) := by
+def principalOpen : Set (Stream' A) := Set.range (x ++ₛ ·)
+@[simp] theorem principalOpen_nil : @principalOpen A [] = Set.univ := by simp [principalOpen]
+@[simp] theorem principalOpen_append :
+  x ++ₛ a ∈ principalOpen (x ++ y) ↔ a ∈ principalOpen y := by simp [principalOpen]
+@[simp] theorem principalOpen_append_nil : x ++ₛ a ∈ principalOpen x := by
+  simpa using principalOpen_append a x []
+@[simp] theorem principalOpen_cons_nil (a : A) (as : Stream' A) : as.cons a ∈ principalOpen [a] := by
+  apply principalOpen_append_nil
+@[simp] theorem extend_sub : a ∈ principalOpen (a.take n) := by
   use a.drop n; simp
-theorem basicOpen_iff_restrict : a ∈ basicOpen x ↔ x = a.take x.length := by
+theorem principalOpen_iff_restrict : a ∈ principalOpen x ↔ x = a.take x.length := by
   constructor
   · rintro ⟨b, _, rfl⟩; simp [take_append_of_le_length]
   · rintro h; rw [h]; exact extend_sub _ _
-theorem basicOpen_cons {as : Stream' A} {x : List A} {a : A} :
-  as ∈ basicOpen (a :: x) ↔ as.get 0 = a ∧ tail as ∈ basicOpen x := by
-  simp_rw [basicOpen, Set.mem_range]
+theorem principalOpen_cons {as : Stream' A} {x : List A} {a : A} :
+  as ∈ principalOpen (a :: x) ↔ as.get 0 = a ∧ tail as ∈ principalOpen x := by
+  simp_rw [principalOpen, Set.mem_range]
   nth_rw 1 [← exists_and_left, ← cons_head_tail as]
   simp_rw [cons_append_stream, cons_injective2.eq_iff, Eq.comm]
-theorem basicOpen_index : a ∈ basicOpen x ↔ ∀ (n) (_ : n < x.length), a.get n = x[n] := by
-  rw [basicOpen_iff_restrict]; constructor <;> intro h
+theorem principalOpen_index : a ∈ principalOpen x ↔ ∀ (n) (_ : n < x.length), a.get n = x[n] := by
+  rw [principalOpen_iff_restrict]; constructor <;> intro h
   · intro n h'; simp_rw (config := {singlePass := true}) [h, take_get]
   · symm; apply List.ext_getElem (by simp); simpa using h
-theorem basicOpen_concat {as : Stream' A} {x : List A} {a : A} :
-  as ∈ basicOpen (x ++ [a]) ↔ as ∈ basicOpen x ∧ as.get x.length = a := by
+theorem principalOpen_concat {as : Stream' A} {x : List A} {a : A} :
+  as ∈ principalOpen (x ++ [a]) ↔ as ∈ principalOpen x ∧ as.get x.length = a := by
   induction' x with x xs ih generalizing as
-  · simp [basicOpen_cons]
-  · simp [basicOpen_cons, @ih (tail as), and_assoc]
-theorem basicOpen_restrict : a ∈ basicOpen (b.take n) ↔ ∀ m < n, a.get m = b.get m := by
-  rw [basicOpen_index]; simp (config := {contextual := true})
-@[simp] theorem basicOpen_sub : basicOpen (x ++ y) ⊆ basicOpen x := by
+  · simp [principalOpen_cons]
+  · simp [principalOpen_cons, @ih (tail as), and_assoc]
+theorem principalOpen_restrict : a ∈ principalOpen (b.take n) ↔ ∀ m < n, a.get m = b.get m := by
+  rw [principalOpen_index]; simp (config := {contextual := true})
+@[simp] theorem principalOpen_sub : principalOpen (x ++ y) ⊆ principalOpen x := by
   intro _ ⟨z, h⟩; use y ++ₛ z; dsimp only; rwa [← append_append_stream]
-@[gcongr] theorem basicOpen_mono {x y : List A} (h : x <+: y) : basicOpen y ⊆ basicOpen x := by
-  obtain ⟨z, rfl⟩ := h; apply basicOpen_sub
+@[gcongr] theorem principalOpen_mono {x y : List A} (h : x <+: y) :
+  principalOpen y ⊆ principalOpen x := by obtain ⟨z, rfl⟩ := h; apply principalOpen_sub
 
-theorem basicOpen_complement : (basicOpen x)ᶜ
-  = ⋃ (y) (_ : x.length = y.length ∧ x ≠ y), basicOpen y := by
+theorem principalOpen_complement : (principalOpen x)ᶜ
+  = ⋃ (y) (_ : x.length = y.length ∧ x ≠ y), principalOpen y := by
   ext a; constructor <;> simp only [Set.mem_iUnion]
   · intro h; use a.take x.length
     simp; intro h'; apply h; rw [h']; simp
@@ -130,32 +131,32 @@ theorem append_con : Continuous (x ++ₛ ·) := by
   · simp_rw [get_append_left _ _ _ h]; exact continuous_const
   · obtain ⟨i, rfl⟩ := le_iff_exists_add.mp h
     simpa only [get_append_right] using continuous_apply i
-theorem hasBasis_basicOpen : (nhds a).HasBasis
-  (fun x ↦ a ∈ basicOpen x) (fun x ↦ basicOpen x) := by
+theorem hasBasis_principalOpen : (nhds a).HasBasis
+  (fun x ↦ a ∈ principalOpen x) (fun x ↦ principalOpen x) := by
   rw [nhds_pi, nhds_discrete]; apply Filter.HasBasis.to_hasBasis
   · apply Filter.hasBasis_pi; intro _; apply Filter.hasBasis_pure
   · intro ⟨I, _⟩ ⟨fin, _⟩; have ⟨N, hN⟩ := fin.bddAbove
     refine ⟨a.take (N + 1), extend_sub _ _, fun b hb n hn ↦ ?_⟩
-    rw [basicOpen_restrict] at hb
+    rw [principalOpen_restrict] at hb
     exact hb n <| lt_of_le_of_lt (hN hn) (Nat.lt_succ_self _)
   · rintro x ⟨a, _, rfl⟩
     refine ⟨⟨Finset.range x.length, fun _ ↦ ()⟩,
       ⟨Set.toFinite _, fun _ _ ↦ trivial⟩, fun b hb ↦ ?_⟩
-    rw [basicOpen_index]; intro n hn
+    rw [principalOpen_index]; intro n hn
     replace hb : b.get n = (x ++ₛ a).get n := hb n (by simp [hn])
     rw [hb, get_append_left _ _ _ hn]
 end
 
-theorem hasBasis_basicOpen': (nhds a).HasBasis
-  (fun n ↦ n ≥ m) (fun n ↦ basicOpen (a.take n)) := by
-  apply Filter.HasBasis.to_hasBasis (hasBasis_basicOpen a)
-  · intro x hx; rw [basicOpen_iff_restrict] at hx; rw [hx]
-    use m + x.length; simp [basicOpen_mono]
+theorem hasBasis_principalOpen': (nhds a).HasBasis
+  (fun n ↦ n ≥ m) (fun n ↦ principalOpen (a.take n)) := by
+  apply Filter.HasBasis.to_hasBasis (hasBasis_principalOpen a)
+  · intro x hx; rw [principalOpen_iff_restrict] at hx; rw [hx]
+    use m + x.length; simp [principalOpen_mono]
   · intro n _; use a.take n; simp
-@[simp] theorem basicOpen_isOpen : IsOpen (basicOpen x) :=
-  isOpen_iff_mem_nhds.mpr fun a h ↦ (hasBasis_basicOpen a).mem_iff.mpr ⟨x, h, subset_rfl⟩
-@[simp] theorem basicOpen_isClosed : IsClosed (basicOpen x) := by
-  rw [← isOpen_compl_iff, basicOpen_complement]
-  exact isOpen_biUnion fun i _ ↦ basicOpen_isOpen i
+@[simp] theorem principalOpen_isOpen : IsOpen (principalOpen x) :=
+  isOpen_iff_mem_nhds.mpr fun a h ↦ (hasBasis_principalOpen a).mem_iff.mpr ⟨x, h, subset_rfl⟩
+@[simp] theorem principalOpen_isClosed : IsClosed (principalOpen x) := by
+  rw [← isOpen_compl_iff, principalOpen_complement]
+  exact isOpen_biUnion fun i _ ↦ principalOpen_isOpen i
 end Discrete
 end Stream'

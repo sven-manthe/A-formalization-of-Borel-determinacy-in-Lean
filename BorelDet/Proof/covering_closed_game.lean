@@ -236,7 +236,7 @@ lemma gameTree_isPruned : IsPruned <| gameTree hyp := by
       x.map Prod.fst ++ [a] ++ₛ y.val ∉ Subtype.val '' G.payoff
     · left; have ⟨y, hy⟩ := h
       rw [← (Game.isClosed_image_payoff.mp hyp.closed).closure_eq,
-        mem_closure_iff_nhds_basis (hasBasis_basicOpen' (2 * k + 1 + 1) _)] at hy
+        mem_closure_iff_nhds_basis (hasBasis_principalOpen' (2 * k + 1 + 1) _)] at hy
       simp at hy; obtain ⟨_, hn, hy⟩ := hy; obtain ⟨n, rfl⟩ := le_iff_exists_add.mp hn
       use body.take n y; simp_rw [pullSub_body, Set.image_image, ← Set.subset_empty_iff]
       rintro x ⟨⟨z, _, rfl⟩, ⟨⟨x', hx'⟩, hxp, rfl⟩⟩; apply hy _ hx' hxp; use z
@@ -300,7 +300,7 @@ theorem payoff_clopen : IsClopen (G').payoff := by
   apply continuous_bot.comp
   rw [(isTopologicalBasis_singletons _).continuous_iff]
   simp; intro x; by_cases h : x.length = 2 * k + 2
-  · convert basicOpen_isOpen x; ext; simp [basicOpen_iff_restrict, h, Eq.comm] --would (a = b <-> b = c) <-> (a = c) be a good simp lemma?
+  · convert principalOpen_isOpen x; ext; simp [principalOpen_iff_restrict, h, Eq.comm] --would (a = b <-> b = c) <-> (a = c) be a good simp lemma?
   · convert isOpen_empty; rw [← Set.subset_empty_iff]; intro x hx
     apply h; simpa using congr_arg List.length hx.symm
 
@@ -330,12 +330,12 @@ lemma getTree_lost
   LosingCondition (hyp := hyp) x hxl := by
   apply not_winning.mp; intro hW
   simp (config := {contextual := true}) [Game.wonPosition_iff_disjoint, Player.residual] at hL
-  obtain ⟨a, ha1, ha2⟩ := isPruned_iff_basicOpen_ne.mp gameTree_isPruned y
+  obtain ⟨a, ha1, ha2⟩ := isPruned_iff_principalOpen_ne.mp gameTree_isPruned y
   refine hL.subset (a := (bodyFunctor.map π ⟨a, ha2⟩).val) ⟨?_, hW.1 ?_⟩
-  · simp [basicOpen_iff_restrict, ← Stream'.map_take]; congr; rwa [← basicOpen_iff_restrict]
+  · simp [principalOpen_iff_restrict, ← Stream'.map_take]; congr; rwa [← principalOpen_iff_restrict]
   · simp; use (a.map Prod.fst).drop (2 * k + 2)
     have hax : x.val = a.take (2 * k + 2) := by
-      rw [(basicOpen_iff_restrict _ _).mp (basicOpen_mono h ha1)]; simp [hxl]
+      rw [(principalOpen_iff_restrict _ _).mp (principalOpen_mono h ha1)]; simp [hxl]
     constructor
     · apply mem_body_of_take 0; intro n _; rw [Stream'.take_drop]
       simpa [hax, Stream'.map_take] using (mem_getTree ⟨a.take (2 * k + 2 + n), take_mem_body ha2 _⟩).2

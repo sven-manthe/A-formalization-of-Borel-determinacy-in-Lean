@@ -1,7 +1,6 @@
 import BorelDet.Tree.len_tree_hom
 
 namespace GaleStewartGame.Tree
-universe u
 open CategoryTheory
 
 noncomputable section
@@ -80,11 +79,11 @@ theorem concat_uniq b (hb : (f ⟨x, mem_of_append hx⟩).val ++ [b] = (f ⟨_, 
   symm; rwa [← List.singleton_inj, ← List.append_right_inj, ← concat_spec]
 end
 
-abbrev extensionsPre : Prefunctor PointedTrees (Type u) where
+abbrev extensionsPre : Prefunctor PointedTrees (Type*) where
   obj T := { a : T.1.1 | T.2.val ++ [a] ∈ T.1.2 }
   map f a := ⟨concat (forgetPoint.map f) a.prop, by
     dsimp only [Set.mem_setOf_eq]; erw [← f.hp, ← concat_spec]; apply SetLike.coe_mem⟩
-def extensions : PointedTrees ⥤ Type u where
+def extensions : PointedTrees ⥤ Type* where
   toPrefunctor := extensionsPre
   map_id _ := by
     ext; simp_rw [PointedLenHom.id_toLenHom, types_id_apply]

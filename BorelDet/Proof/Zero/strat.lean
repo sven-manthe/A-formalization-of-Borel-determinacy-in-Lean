@@ -100,14 +100,14 @@ lemma lost_of_body_lost (hy : ⟨y.val, body_mono (subtree_sub _) y.prop⟩ ∉ 
   ∃ m, (takeLift y m).Lost := by
   rw [← Subtype.val_injective.mem_set_image,
     ← (isClosed_image_payoff.mp hyp.closed).closure_eq,
-    mem_closure_iff_nhds_basis (hasBasis_basicOpen y.val)] at hy
+    mem_closure_iff_nhds_basis (hasBasis_principalOpen y.val)] at hy
   simp at hy; obtain ⟨x, hx1, hx2⟩ := hy; use x.length
   apply TreeLift.lost_of_lost'; unfold Lift.Lost'
   rw [wonPosition_iff_disjoint, ← Set.subset_empty_iff]
   intro z ⟨h1, h2⟩; simp at h1 h2; apply hx2 z
   · exact h2.2
-  · apply basicOpen_mono _ h1
-    rw [basicOpen_iff_restrict] at hx1; rw [hx1]; simp
+  · apply principalOpen_mono _ h1
+    rw [principalOpen_iff_restrict] at hx1; rw [hx1]; simp
   · exact h2.1
 lemma lost_of_losable n (h : (takeLift y n).Losable) : ∃ m, (takeLift y m).Lost := by
   by_cases h' : ∃ m, (takeLift y m).Lost; exact h'

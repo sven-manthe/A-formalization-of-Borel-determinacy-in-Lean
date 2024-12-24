@@ -66,7 +66,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
     · rw [WLLift.liftVal, List.drop_of_length_le (by simp [hn])]; simpa using hW.liftMedium_mem
     · specialize ih (hW.take (2 * k + 2 + n) (by omega)); simp [hn] at ih
       rw [H.toWLift.liftVal.eq_take_concat (2 * k + 2 + n) (by simpa)]
-      simp [- List.take_concat_get']; use ih; constructor
+      simp [- List.take_append_getElem]; use ih; constructor
       · rw [getTree_eq' _ ih, List.map_drop, ← H.liftVal_take _ (by omega), WLLift.liftVal_lift,
           mem_subAt, toWLift_toLift, take_toPreLift, PreLift.take_x, take_coe, ← List.take_drop,
           List.getElem_drop', List.take_concat_get', List.take_drop, ← hn]
