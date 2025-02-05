@@ -15,7 +15,7 @@ example (x : List α) {n m} (h : n = m) : x.get n = x.get m := by simp [h]-/
   (y ++ ·)⁻¹' ((x ++ ·)⁻¹' T) = ((x ++ y) ++ ·)⁻¹' T := by
   simp [← Set.preimage_comp]
 
-theorem eq_take_concat (x : List α) n (h : x.length = n + 1) :
+lemma eq_take_concat (x : List α) n (h : x.length = n + 1) :
   x = x.take n ++ [x[n]] := by
   rw [take_concat_get', ← h, take_length]
 lemma head_eq_get (x : List α) h : x.head h = x[0]'(List.length_pos.mpr h) :=
@@ -44,29 +44,29 @@ def zipFun {α: Type*} {β: α → Type*} {n : ℕ} (f : (a : α) → List (β a
   | 0 => []
   | n + 1 => (fun a ↦ (f a).head (ne_nil_of_length_eq_add_one (h a)))
     :: zipFun (fun a ↦ (f a).tail) ((by simp [h]) : ∀ a, length _ = n)
-@[simp] theorem mapEval_zip {β: α → Type*} (f : (a : α) → List (β a)) (h : ∀ a, (f a).length = n) :
+@[simp] lemma mapEval_zip {β: α → Type*} (f : (a : α) → List (β a)) (h : ∀ a, (f a).length = n) :
  (zipFun f h).mapEval a = f a := by
   induction' n with n ih generalizing f
   · specialize h a; simp at h; simp [zipFun, h]
   · simp [zipFun, ih]
-@[simp] theorem zip_mapEval {β: α → Type*} (x : List ((a : α) → β a)) :
+@[simp] lemma zip_mapEval {β: α → Type*} (x : List ((a : α) → β a)) :
   zipFun x.mapEval (n := x.length) (by simp) = x := by induction' x <;> simp [zipFun, *]
-theorem mapEval_joint_epi {β: α → Type*} {x y : List (∀ a, β a)} (hl : x.length = y.length)
+lemma mapEval_joint_epi {β: α → Type*} {x y : List (∀ a, β a)} (hl : x.length = y.length)
   (h : ∀ a, x.mapEval a = y.mapEval a) : x = y := by
   rw [← zip_mapEval x, ← zip_mapEval y]; simp_rw [hl, h]
-@[simp, simp_lengths] theorem zipFun_len {β: α → Type*} (f : (a : α) → List (β a))
+@[simp, simp_lengths] lemma zipFun_len {β: α → Type*} (f : (a : α) → List (β a))
   (h : ∀ a, (f a).length = n) : (zipFun f h).length (α := no_index _) = n := by
   induction' n with _ ih generalizing f <;> simp [zipFun, *]
-@[simp] theorem zipFun_zero {β: α → Type*} (f : (a : α) → List (β a)) (h : ∀ a, (f a).length = 0) :
+@[simp] lemma zipFun_zero {β: α → Type*} (f : (a : α) → List (β a)) (h : ∀ a, (f a).length = 0) :
   zipFun f h = [] := by apply eq_nil_of_length_eq_zero; simp
-@[simp] theorem zipFun_append {β: α → Type*} (f g : (a : α) → List (β a))
+@[simp] lemma zipFun_append {β: α → Type*} (f g : (a : α) → List (β a))
   (hf : ∀ a, (f a).length = m) (hg : ∀ a, (g a).length = n) :
   zipFun f hf ++ zipFun g hg = zipFun (n := m + n) (fun a ↦ f a ++ g a) (by simp [hf, hg]) := by
   induction' m with m ih generalizing f
   · simp [eq_nil_of_length_eq_zero (hf _)]
   · have hf' a : f a ≠ [] := by intro h; simpa [h] using hf a
     simp [zipFun, Nat.succ_add, ih, hf']
-@[gcongr] theorem zipFun_mono {β: α → Type*} (f g : (a : α) → List (β a))
+@[gcongr] lemma zipFun_mono {β: α → Type*} (f g : (a : α) → List (β a))
   (hf : ∀ a, (f a).length = m) (hg : ∀ a, (g a).length = n) (hm : m ≤ n) (h : ∀ a, f a <+: g a) :
   zipFun f hf <+: zipFun g hg := by
   use zipFun (n := n - m) (fun a ↦ drop m (g a)) (by simp [hg]); rw [zipFun_append]

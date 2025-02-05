@@ -3,15 +3,15 @@ import BorelDet.Proof.build_levelwise
 
 namespace GaleStewartGame
 open Classical CategoryTheory
-open Tree Stream'.Discrete
+open Descriptive Tree Stream'.Discrete
 
 noncomputable section
 variable {k m n : ℕ} {p : Player}
 namespace Covering
 /-- a tree that is pruned and nonempty as required for determinacy -/
 def PTrees := Σ' (T : Trees), IsPruned T.2 ∧ [] ∈ T.2
-@[simp] theorem pTrees_isPruned (T : PTrees) : IsPruned T.1.2 := T.2.1
-@[simp] theorem pTrees_ne (T : PTrees) : [] ∈ T.1.2 := T.2.2
+@[simp] lemma pTrees_isPruned (T : PTrees) : IsPruned T.1.2 := T.2.1
+@[simp] lemma pTrees_ne (T : PTrees) : [] ∈ T.1.2 := T.2.2
 end Covering
 namespace Tree.ResStrategy
 variable {T : Covering.PTrees} (S : ResStrategy T.1 p k)
@@ -19,13 +19,13 @@ def choose_succ : ResStrategy T.1 p m :=
   fun x hp _ ↦ if h' : x.val.length ≤ k then S x hp h' else choice (T.2.1 x)
 @[simp] lemma res_choose_succ (h : k ≤ m) : S.choose_succ.res h = S := by
   ext _ _ hl; simp [choose_succ, res, hl]
-theorem res_surjective (h : m ≤ k) : (res h (T := T.1) (p := p)).Surjective :=
+lemma res_surjective (h : m ≤ k) : (res h (T := T.1) (p := p)).Surjective :=
   fun S ↦ ⟨_, S.res_choose_succ h⟩
 @[simps] def choose_system : StrategySystem T.1 p where
   str k := S.choose_succ
   con k := by ext x; simp [choose_succ, res]
 lemma choose_system_self : S.choose_system.str k = S := by ext _ _ hl; simp [choose_succ, hl]
-theorem str_surjective : (fun (S : StrategySystem T.1 p) ↦ S.str k).Surjective :=
+lemma str_surjective : (fun (S : StrategySystem T.1 p) ↦ S.str k).Surjective :=
   fun S ↦ ⟨_, S.choose_system_self⟩
 end Tree.ResStrategy
 namespace Covering
@@ -71,7 +71,7 @@ def bodyLiftExists {T U : PTrees} (toHom : T.1 ⟶ U.1) (str : PTreesS.mk T ⟶ 
   ∃ x : body S.pre.subtree,
     (Tree.bodyFunctor.map toHom ⟨x, body_mono S.pre.subtree_sub x.prop⟩).val
     = y.val
-theorem bodyLiftExists_iff_system
+lemma bodyLiftExists_iff_system
   {T U : PTrees} (toHom : T.1 ⟶ U.1) (str : PTreesS.mk T ⟶ PTreesS.mk U) :
   bodyLiftExists toHom str ↔ ∀ {p S} (y : bodySystem.obj U.1),
   consistent y ((LvlStratHom.system p).map str S) →
@@ -110,13 +110,13 @@ instance : Category PTrees where
 def PTreeForget : PTrees ⥤ Trees where
   obj T := T.1
   map f := f.toHom
-@[simp, simp_lengths] theorem id_covering_toHom (T : PTrees) :
+@[simp, simp_lengths] lemma id_covering_toHom (T : PTrees) :
   Covering.toHom (𝟙 T) = 𝟙 _ := rfl
-@[simp] theorem id_covering_str (T : PTrees) :
+@[simp] lemma id_covering_str (T : PTrees) :
   Covering.str (𝟙 T) = 𝟙 _ := rfl
-@[simp, simp_lengths] theorem comp_covering_toHom {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V) :
+@[simp, simp_lengths] lemma comp_covering_toHom {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V) :
   (f ≫ g).toHom = f.toHom ≫ g.toHom := rfl
-@[simp] theorem comp_covering_str {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V) :
+@[simp] lemma comp_covering_str {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V) :
   (f ≫ g).str = f.str ≫ g.str := rfl
 lemma comp_covering_str_apply (S T U : PTrees) (f : S ⟶ T) (g : T ⟶ U) A :
   (f ≫ g).str.toFun p k A = g.str.toFun p k (f.str.toFun p k A) := by dsimp
@@ -125,35 +125,35 @@ lemma comp_covering_str_apply (S T U : PTrees) (f : S ⟶ T) (g : T ⟶ U) A :
 
 def Fixing k {T U : PTrees} (f : T ⟶ U) :=
   ∃ _ : Tree.Fixing k f.toHom, ∀ p, f.str.toFun p k = ResStrategy.fromMap f.toHom
-@[simp] theorem fixing_id k T : Fixing k (𝟙 T) := by
+@[simp] lemma fixing_id k T : Fixing k (𝟙 T) := by
   use (by synth_fixing); intros; ext; simp
-theorem fixing_comp k {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V)
+lemma fixing_comp k {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V)
   (hf : Fixing k f) (hg : Fixing k g) : Fixing k (f ≫ g) := by
   have _ := hf.1; have _ := hg.1
   use (by simp [Tree.Fixing]; infer_instance)
   intros; ext; simp [hf.2, hg.2]
-theorem fixing_snd_mon {k m} (hm : k ≤ m) {T U : PTrees} (f : T ⟶ U)
+lemma fixing_snd_mon {k m} (hm : k ≤ m) {T U : PTrees} (f : T ⟶ U)
   (h : Fixing m f) (p : Player) :
   f.str.toFun p k = ResStrategy.fromMap (f := f.toHom) (h := h.1.mon hm) := by
   ext S'; obtain ⟨S', rfl⟩ := ResStrategy.res_surjective hm S'
   have hs := by simpa using congr_arg (ResStrategy.res hm) (congr_fun (h.2 p) S')
   rw [← hs, f.str.con]
-theorem fixing_mon {S T} (f : S ⟶ T) (h : Fixing k f) (hn : n ≤ k) :
+lemma fixing_mon {S T} (f : S ⟶ T) (h : Fixing k f) (hn : n ≤ k) :
   Fixing n f := ⟨h.1.mon hn, fun _ ↦ fixing_snd_mon hn _ h _⟩
 
 def Games := Σ' (A : Type*) (G : Game A), IsPruned G.tree ∧ [] ∈ G.tree
-@[simp] theorem games_isPruned (G : Games) : IsPruned G.2.1.tree := G.2.2.1
-@[simp] theorem games_ne (G : Games) : [] ∈ G.2.1.tree := G.2.2.2
+@[simp] lemma games_isPruned (G : Games) : IsPruned G.2.1.tree := G.2.2.1
+@[simp] lemma games_ne (G : Games) : [] ∈ G.2.1.tree := G.2.2.2
 instance (G : Games) : TopologicalSpace G.1 := ⊥
 instance (G : Games) : DiscreteTopology G.1 where eq_bot := rfl
 abbrev Games.tree (G : Games) : PTrees := ⟨⟨G.1, G.2.1.tree⟩, G.2.2⟩
 @[ext] structure Games.Covering (G' : Games) (G : Games) extends
   GaleStewartGame.Covering G'.tree G.tree where
   hpre : (Tree.bodyFunctor.map toHom)⁻¹' (G.2.1.payoff) = G'.2.1.payoff
-@[simp] theorem covering_hpre_pl {G' G} (f : Games.Covering G' G) (p : Player) :
+@[simp] lemma covering_hpre_pl {G' G} (f : Games.Covering G' G) (p : Player) :
   (Tree.bodyFunctor.map f.toHom)⁻¹' (p.payoff G.2.1) = p.payoff G'.2.1 := by
   cases p <;> simp [f.hpre]
-theorem covering_winning {G' G} (f : Games.Covering G' G) {p : Player}
+lemma covering_winning {G' G} (f : Games.Covering G' G) {p : Player}
   {S : Strategy G'.tree.1.2 p} (h : S.pre.IsWinning) :
   ((LvlStratHom.global _).map f.str S).pre.IsWinning := by
   intro y hy; obtain ⟨x, rfl⟩ := f.h_body ⟨y, hy⟩
@@ -163,7 +163,7 @@ theorem covering_winning {G' G} (f : Games.Covering G' G) {p : Player}
 
 def Games.IsUnravelable G := ∀ k, ∃ (G' : Games) (f : Games.Covering G' G),
   Fixing k f.toCovering ∧ IsClopen G'.2.1.payoff
-theorem Games.IsUnravelable.isDetermined {G : Games} (h : G.IsUnravelable) :
+lemma Games.IsUnravelable.isDetermined {G : Games} (h : G.IsUnravelable) :
   G.2.1.IsDetermined :=
   let ⟨_, f, _, h⟩ := h 0
   let ⟨p, s, hw⟩ := Game.gale_stewart h.1 (games_isPruned _)

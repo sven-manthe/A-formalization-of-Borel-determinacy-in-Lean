@@ -11,7 +11,7 @@ lemma choose_eq' {α β : Type u} {p : α → Prop} {q : β → Prop} (hab : α 
   subst hab; apply heq_of_eq; apply choose_eq hpq
 
 namespace GaleStewartGame.PreStrategy
-open Classical
+open Classical Descriptive
 open Stream'.Discrete Tree Game
 
 noncomputable section
@@ -76,13 +76,13 @@ variable {x : List A} (h : WinningPrefix G p x)
 def strat := h.num_spec.choose
 lemma strat_winning : h.strat.pre.IsWinning := h.num_spec.choose_spec
 
-theorem extracted_1 {G : Game A} {p : Player} {x : List A} (h : WinningPrefix G p x) {y : List A} :
+lemma extracted_1 {G : Game A} {p : Player} {x : List A} (h : WinningPrefix G p x) {y : List A} :
   Strategy (G.residual ((x ++ y).take (h.extend y).num)).tree
     (p.residual ((x ++ y).take (h.extend y).num)) =
   Strategy (G.residual (x.take h.num)).tree
     (p.residual (x.take h.num)) := by
   rw [h.extend_num, h.take_num]
-theorem extracted_2 {G : Game A} {p : Player} {x : List A} (h : WinningPrefix G p x) {y : List A}
+lemma extracted_2 {G : Game A} {p : Player} {x : List A} (h : WinningPrefix G p x) {y : List A}
   (a : Strategy (G.residual ((x ++ y).take (h.extend y).num)).tree
     (p.residual ((x ++ y).take (h.extend y).num))) :
   a.pre.IsWinning ↔ (cast h.extracted_1 a).pre.IsWinning := by
@@ -103,7 +103,7 @@ lemma extend_strat_subtree y : (h.extend y).strat.pre.subtree = h.strat.pre.subt
 lemma prefix_strat_subtree {G' p' y} (xy : x <+: y) (hG : G = G') (hp : p = p') :
   (h.of_prefix' xy hG hp).strat.pre.subtree = h.strat.pre.subtree := by
   subst hG hp; obtain ⟨z, rfl⟩ := xy; exact h.extend_strat_subtree z
-lemma strat_eval_val_congr {p p'} (U U' : Tree A) (hU : U = U') (hep : p = p')
+lemma strat_eval_val_congr {p p'} (U U' : tree A) (hU : U = U') (hep : p = p')
   (S : Strategy U p) (S' : Strategy U' p')
   (h : HEq S S') (x : U) hp :
   (S x hp).val = (S' ⟨x.val, by subst hU; exact x.prop⟩ (by subst hU hep h; exact hp)).val := by
@@ -144,7 +144,7 @@ lemma lem2 {y} : (x.take h.num ++ y).drop (h.shrink.extend y).num = y := by
     <;> simp [h.shrink.extend_num, h.shrink_num, h.num_le_length]
 lemma val_cast {T y} (h : x = y) (a : subAt T x) (b : subAt T y) :
   cast (by rw [h]) a = b ↔ a.val = b.val := by subst h; simp
-lemma val_cast' {T T' : Tree A} {b : T} {b' : T'} (hT : T = T')
+lemma val_cast' {T T' : tree A} {b : T} {b' : T'} (hT : T = T')
   (h : b = cast (by rw [hT]) b') (x : ExtensionsAt b) (y : ExtensionsAt b') :
   cast (by subst hT h; rfl) x = y ↔ x.val = y.val := by
     subst h hT; symm; apply Subtype.val_inj
@@ -237,7 +237,7 @@ lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
     · simp [← List.append_assoc]
       rw [subtree_fair _ ⟨_, ih⟩ (by abstract synth_isPosition)]
       simpa [List.append_assoc] using h.strat.pre.subtree_sub h'
-theorem winAsap_body (x : body (winAsap G p).subtree)
+lemma winAsap_body (x : body (winAsap G p).subtree)
   (h : ∃ n, WinningPrefix G p (x.val.take n)) :
   ⟨x.val, body_mono (subtree_sub _) x.prop⟩ ∈ p.payoff G := by
   obtain ⟨N, h⟩ := h; have hN : h.num ≤ N := by simpa using h.num_le_length
@@ -246,7 +246,7 @@ theorem winAsap_body (x : body (winAsap G p).subtree)
     simp [hN] at hW; exact hW.2
   apply mem_body_of_take 0; intro n _
   rw [← winAsap_subtree]; simp [hN]
-theorem winAsap_body' (x : body (winAsap G p).followUntilWon.subtree)
+lemma winAsap_body' (x : body (winAsap G p).followUntilWon.subtree)
   (h : ∃ n, WinningPrefix G p (x.val.take n)) :
   ⟨x.val, body_mono (subtree_sub _) x.prop⟩ ∈ p.payoff G := by
   rcases followUntilWon_body _ x.prop with h' | h'

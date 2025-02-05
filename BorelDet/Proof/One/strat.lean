@@ -1,7 +1,7 @@
 import BorelDet.Proof.One.lift
 
 namespace GaleStewartGame.BorelDet.One
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
@@ -117,15 +117,16 @@ lemma losable_or_winnable :
             ++ [H.x.val[2 * k + 1 + n]]) = H.x.val.drop (2 * k + 1) := by
             simp_rw [hnat2]; nth_rw 2 [List.getElem_drop']
             rw [List.take_concat_get', (H.x.val.drop _).take_of_length_le (by synth_isPosition)]
-            simp [hcs]
-          have hcm := HL.concat_mem_tree (a := H.x.val[2 * k + 1 + n]) (by synth_isPosition) (by
-            simpa [hlist] using subtree_sub _ H.x.prop) hcl (by
+            simp [hcs, HL]
+          have hcm := HL.concat_mem_tree (a := H.x.val[2 * k + 1 + n]) (by
+            unfold HL; synth_isPosition) (by
+            simpa [hlist, HL] using subtree_sub _ H.x.prop) hcl (by
               intro h; apply hnW''; use n + 1
               simp [WinningPosition] at h
               convert h using 2
-              · simp [hlist, hn]
+              · simp [hlist, hn, HL]
               · synth_isPosition)
-          simp [hnat2] at hcm
+          simp [hnat2, HL] at hcm
           rw [List.getElem_drop', List.take_concat_get', List.take_of_length_le
             (by synth_isPosition)] at hcm
           cases hc hcm
@@ -133,7 +134,7 @@ lemma losable_or_winnable :
           ((strategyEquivSystem H.R).str _) (by simp [Ht])).con
         ext1
         · ext1
-          · simpa [extension, PreLift.extension, hnW, hnW', ih] using
+          · simpa [extension, PreLift.extension, hnW, hnW', ih, Ht] using
               H.x_mem_tree' (by abstract omega) (by abstract synth_isPosition)
           · rfl
         · dsimp [PreLift.LLift.S]; congr! 1; simp [Ht, dropLast]
@@ -353,7 +354,7 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
   use u.length; simp [PreLift.Won]; use u, hu1
   simp [← Stream'.take_drop, List.prefix_iff_eq_take, Stream'.take_take, - Function.iterate_succ]
   rw [principalOpen_iff_restrict] at hu2; convert hu2 using 2
-  simp [List.take_drop]; rw [← Stream'.drop_append_of_le_length _ _ (by simp)]
+  simp [List.take_drop]; rw [← Stream'.drop_append_of_le_length _ _ _ (by simp)]
   generalize_proofs pf; suffices pf.num ≤ n by simp [this]
   convert h.num_le_length using 1
   · nth_rw 2 [pf.prefix_num (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _)
@@ -386,7 +387,7 @@ lemma lostLift_map (h : ∀ n, (bodyTake y n).preLift.Losable) :
   ext; simp [lostLift, - PreLift.Losable.lift'_toLift, Stream'.get, Stream'.map]
   rw [Lift'.liftVal_lift_get] <;> simp [Stream'.get]; omega
 
-theorem body_stratMap {G : Game A} {k : ℕ} {hyp : Hyp G k}
+lemma body_stratMap {G : Game A} {k : ℕ} {hyp : Hyp G k}
   {R : Strategy (gameAsTrees hyp).2 Player.one} (y : body (stratMap' R).pre.subtree) :
   ∃ x : body R.pre.subtree, (bodyFunctor.map π
     ⟨x.val, body_mono R.pre.subtree_sub x.prop⟩).val = y.val :=

@@ -5,7 +5,7 @@ import BorelDet.Proof.One.strat
 import BorelDet.Proof.covering_lim
 
 namespace GaleStewartGame
-open Tree Covering Stream'.Discrete
+open Descriptive Tree Covering Stream'.Discrete
 open Classical MeasureTheory CategoryTheory
 noncomputable section
 
@@ -23,7 +23,7 @@ def treeCov : (G'h hyp).tree ⟶ (Gh hyp).tree where
 def gameCov : Games.Covering (G'h hyp) (Gh hyp) where
   toCovering := treeCov hyp
   hpre := game_payoff hyp
-theorem main_lemma {G : Games} (hC : IsClosed G.2.1.payoff) : G.IsUnravelable :=
+lemma main_lemma {G : Games} (hC : IsClosed G.2.1.payoff) : G.IsUnravelable :=
   fun k ↦ ⟨G'h (k := k) ⟨hC, G.2.2.1, G.2.2.2⟩, gameCov _, by
     unfold gameCov treeCov; use by synth_fixing
     rintro (_ | _) <;> (ext; dsimp only [Zero.stratMap, One.stratMap]) <;>
@@ -45,20 +45,20 @@ variable (T : PTrees) (W : Set (body T.1.2)) {n : ℕ}
 /-- a slight strengthening of Martin's notion of unravelable games to facilitate Borel induction -/
 def UniversallyUnravelable :=
   ∀ ⦃T'⦄ (f : T' ⟶ T), (extendToGame T' <| (bodyFunctor.map f.toHom)⁻¹' W).IsUnravelable
-theorem unravelable_complement (h : UniversallyUnravelable T W) :
+lemma unravelable_complement (h : UniversallyUnravelable T W) :
   UniversallyUnravelable T Wᶜ := by
   intro _ f n; obtain ⟨G, f, ht, hc⟩ := h f n
   use extendToGame G.tree (Subtype.val⁻¹' G.2.1.payoff)ᶜ
   use { toCovering := f.toCovering, hpre := (by
     simp [Set.compl_eq_univ_diff]; rw [← f.hpre]; rfl) }, ht
   simpa [Set.compl_eq_univ_diff] using hc.compl
-theorem closed_unravelable (h : IsClosed W) : UniversallyUnravelable T W := by
+lemma closed_unravelable (h : IsClosed W) : UniversallyUnravelable T W := by
   intro T' f; apply BorelDet.main_lemma
   simpa using h.preimage (LenHom.bodyMap_continuous f.toHom)
-theorem open_unravelable (h : IsOpen W) : UniversallyUnravelable T W := by
+lemma open_unravelable (h : IsOpen W) : UniversallyUnravelable T W := by
   rw [← compl_compl W]; apply unravelable_complement; apply closed_unravelable
   exact isClosed_compl_iff.mpr h
-theorem unravelable_preimage {T' T : PTrees} (f : T' ⟶ T) W (h : UniversallyUnravelable T W) :
+lemma unravelable_preimage {T' T : PTrees} (f : T' ⟶ T) W (h : UniversallyUnravelable T W) :
   UniversallyUnravelable T' ((bodyFunctor.map f.toHom)⁻¹' W) := by
   intro _ g; simpa using h (g ≫ f)
 
@@ -92,15 +92,15 @@ def unravel_nth : ∀ n, PartiallyUnravelled n
 def unravelFunctor : ℕᵒᵖ ⥤ PTrees :=
   nat_free_cat.symm ⟨fun n ↦ (unravel_nth G k n).carrier,
     fun n ↦ ((unravel_nth G k n).continue k).2.1⟩
-theorem unravelFunctor_succ n :
+lemma unravelFunctor_succ n :
   (unravelFunctor G k).map (homOfLE (Nat.le_succ n)).op
     = ((unravel_nth G k n).continue k).2.1 := by
   show (nat_free_cat (unravelFunctor G k)).2 _ = _
   simp [unravelFunctor]
-theorem unravelFunctor_fixing n :
+lemma unravelFunctor_fixing n :
   Covering.Fixing (k + n) ((unravelFunctor G k).map (homOfLE (Nat.le_succ n)).op) := by
   simpa [unravelFunctor_succ] using ((unravel_nth G k n).continue k).2.2.1
-theorem unravelFunctor_preimage m n :
+lemma unravelFunctor_preimage m n :
   (Tree.bodyFunctor.map
     ((unravelFunctor G k).map (homOfLE (by simp : 0 ≤ n)).op).toHom)⁻¹' (G.sets m).1
   = ((unravel_nth G k n).sets m).1 := by
@@ -112,7 +112,7 @@ theorem unravelFunctor_preimage m n :
     simp [*, unravelFunctor_succ, ← ((unravel_nth G k n).continue k).2.2.2, unravel_nth]
 def unravelLim : Limits.Cone (unravelFunctor G k) :=
   limCone (unravelFunctor_fixing G k)
-theorem unravelLim_fixing : Covering.Fixing k ((unravelLim G k).π.app ⟨0⟩) :=
+lemma unravelLim_fixing : Covering.Fixing k ((unravelLim G k).π.app ⟨0⟩) :=
   limCone_fixing (unravelFunctor_fixing G k) 0
 
 set_option maxHeartbeats 400000 in
@@ -144,18 +144,24 @@ def unravelableAsMeasurable : MeasurableSpace (Tree.body T.1.2) where
     let gc : G'.tree ⟶ G := g.toCovering
     use G', {
       toCovering := gc ≫ π.app ⟨0⟩
-      hpre := by rw [← g.hpre]; simp
+      hpre := by rw [← g.hpre]; simp [gc]
     }, fixing_comp k gc _ hgT <| unravelLim_fixing G0 k
 
-theorem borel_unravelable : borel _ ≤ unravelableAsMeasurable T :=
+lemma borel_unravelable : borel _ ≤ unravelableAsMeasurable T :=
   MeasurableSpace.generateFrom_le <| open_unravelable T
 end BorelDet'
 
 /-- Borel games are determined -/
-theorem Games.borel_determinacy (G : Games) (h : MeasurableSet[borel _] G.2.1.payoff) :
+lemma Games.borel_determinacy (G : Games) (h : MeasurableSet[borel _] G.2.1.payoff) :
   G.2.1.IsDetermined := by
   simpa [BorelDet'.extendToGame] using
     (BorelDet'.borel_unravelable G.tree _ h (𝟙 G.tree)).isDetermined
+theorem borel_determinacy {A : Type*} {G : Game A}
+  (hB : MeasurableSet[borel _] G.payoff) (hP : Tree.IsPruned G.tree) : G.IsDetermined := by
+  by_cases h : [] ∈ G.tree
+  · exact Games.borel_determinacy ⟨A, G, hP, h⟩ hB
+  · rw [G.empty_of_tree (by simpa)]
+    exact ⟨Player.zero, PreStrategy.existsWinning_empty⟩
 
 end
 end GaleStewartGame

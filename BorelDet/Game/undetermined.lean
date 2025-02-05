@@ -2,13 +2,13 @@ import BorelDet.Game.games
 
 namespace GaleStewartGame
 open Classical Cardinal
-open Stream'.Discrete Tree PreStrategy
+open Stream'.Discrete Descriptive Tree PreStrategy
 
 variable {A : Type*}
 /-- the strategy which plays the infinite sequence `a` independent of the opponents' moves -/
-def Player.ownTree (p : Player) (a : Stream' A) : Strategy (⊤ : Tree A) p :=
+def Player.ownTree (p : Player) (a : Stream' A) : Strategy (⊤ : tree A) p :=
   fun x _ ↦ ⟨a.get (x.val.length / 2), by simp⟩
-@[simp] theorem Player.ownTree.mem_body {p} {a x : Stream' A} :
+@[simp] lemma Player.ownTree.mem_body {p} {a x : Stream' A} :
   x ∈ body (ownTree p a).pre.subtree ↔ ∀ n, x.get (2 * n + p.toNat) = a.get n := by
   dsimp [Tree.body]; constructor <;> intro h
   · intro n; specialize h (x.take (2 * n + p.toNat + 1)) (extend_sub _ x)
@@ -25,13 +25,13 @@ def Player.ownTree (p : Player) (a : Stream' A) : Strategy (⊤ : Tree A) p :=
       suffices b = x.get xr.length by cases p <;> (simp_all [IsPosition]; congr; omega)
       obtain ⟨_, _, rfl⟩ := hx; simp
     · rw [subtree_fair _ ⟨_, ih⟩ (by synth_isPosition)]; trivial
-theorem Player.ownTree.disjoint {p} {a b : Stream' A} (h : a ≠ b) :
+lemma Player.ownTree.disjoint {p} {a b : Stream' A} (h : a ≠ b) :
   body (ownTree p a).pre.subtree ∩ body (ownTree p b).pre.subtree = ∅ := by
   ext x; constructor
   · intro ⟨ha, hb⟩; apply h; ext n
     rw [← ownTree.mem_body.mp ha n, ← ownTree.mem_body.mp hb n]
   · simp
-theorem QuasiStrategy.subtree_top_large {p} (h : 2 ≤ #A) (S : QuasiStrategy (⊤ : Tree A) p) :
+lemma QuasiStrategy.subtree_top_large {p} (h : 2 ≤ #A) (S : QuasiStrategy (⊤ : tree A) p) :
   𝔠 ≤ #(body S.1.subtree) := by
   have h' : 𝔠 ≤ #(Stream' A) := by simpa [Stream'] using power_le_power_right h
   apply le_trans h' <| (le_def (Stream' A) _).mpr _
@@ -53,9 +53,9 @@ theorem QuasiStrategy.subtree_top_large {p} (h : 2 ≤ #A) (S : QuasiStrategy (�
 @[simp] lemma card_player : #Player = 2 := by
   apply mk_eq_two_iff.mpr; use Player.zero, Player.one
   simp; ext p; cases p <;> tauto
-theorem Game.exists_undetermined :
+lemma Game.exists_undetermined :
   ∃ G : Game (Fin 2), IsPruned G.tree ∧ [] ∈ G.tree ∧ ¬ G.IsDetermined := by
-  let strat := (p : Player) × QuasiStrategy (⊤: Tree (Fin 2)) p
+  let strat := (p : Player) × QuasiStrategy (⊤ : Descriptive.tree (Fin 2)) p
   have h : #strat ≤ 𝔠 := by
     have h : 𝔠 = #(Player × (List (Fin 2) → (Set (Fin 2)))) := calc 𝔠
       _ = 2 * 2 ^ (2 * ℵ₀) := by norm_num

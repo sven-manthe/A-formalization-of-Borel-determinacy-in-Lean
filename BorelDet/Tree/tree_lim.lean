@@ -3,32 +3,32 @@ import BorelDet.Tree.restrict_tree
 import BorelDet.Basic.inv_limit_nat
 
 namespace GaleStewartGame.Tree
-open Classical CategoryTheory
+open Classical CategoryTheory Descriptive
 
 noncomputable section
 variable {A B : Type*} {m k n : ℕ}
 /-- Object function of adjoint of `res k` -/
-def constTreeObj (k : ℕ) (A : Type*) : Tree A where
+def constTreeObj (k : ℕ) (A : Type*) : tree A where
   val := {x | ∃ m ≤ k, x ∈ Set.range (List.replicate m)}
   property := by
     rintro x a ⟨m, hm, ⟨b, h⟩⟩; rcases m with _ | m
     · simp at h
     · rw [List.replicate_succ'] at h
       exact ⟨m, ⟨by omega, ⟨b, List.append_inj_left' h rfl⟩⟩⟩
-@[simp] theorem mem_constTree (a : A) (h : m ≤ k) :
+@[simp] lemma mem_constTree (a : A) (h : m ≤ k) :
   List.replicate m a ∈ constTreeObj k A := by
   use m; simp [h]
 def headD (x : constTreeObj k A) : A := x.prop.choose_spec.2.choose
-@[simp] theorem eq_replicate_headD (x : constTreeObj k A) :
+@[simp] lemma eq_replicate_headD (x : constTreeObj k A) :
   List.replicate x.val.length (headD x) = x := by
   nth_rw 2 [← x.prop.choose_spec.2.choose_spec]
   nth_rw 1 [← x.prop.choose_spec.2.choose_spec]
   symm; apply List.eq_replicate_of_mem; intro _; apply List.eq_of_mem_replicate
-theorem headD_nonempty (x : constTreeObj k A) (h : x.val ≠ []) : headD x = x.val.head h := by
+lemma headD_nonempty (x : constTreeObj k A) (h : x.val ≠ []) : headD x = x.val.head h := by
   rw [← eq_replicate_headD] at h; rw [← List.head_replicate h]; simp
-@[simp] theorem constTree_length (x : constTreeObj k A) : x.val.length ≤ k := by
+@[simp] lemma constTree_length (x : constTreeObj k A) : x.val.length ≤ k := by
   obtain ⟨_, ⟨_, h, ⟨_, rfl⟩⟩⟩ := x; simp [h]
-@[simp] theorem constTree_zero (x : constTreeObj 0 A) : x.val = [] := by
+@[simp] lemma constTree_zero (x : constTreeObj 0 A) : x.val = [] := by
   apply List.eq_nil_of_length_eq_zero; linarith [constTree_length x]
 /-- Adjoint of `res k` -/
 def constTree (k : ℕ) : Type* ⥤ Trees where
@@ -41,7 +41,7 @@ def constTree (k : ℕ) : Type* ⥤ Trees where
   }
   map_id _ := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext x.val.map_id
   map_comp f g := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (List.map_map g f x.val).symm
-@[simp] theorem head_constTree_map {B} (k : ℕ) (f : A → B)
+@[simp] lemma head_constTree_map {B} (k : ℕ) (f : A → B)
   {x : constTreeObj k A} (h : x.val ≠ []) :
   List.head (((constTree k).map f) x).val (LenHom.map_ne_nil _ h)
   = f (List.head x.val h) := by simp [constTree, ← rem_toFun]
@@ -100,7 +100,7 @@ instance (k : ℕ) : Limits.PreservesLimitsOfSize (Tree.resEq k) :=
 section TreeLimits
 variable {J : Type} [Category J] (F : J ⥤ Trees)
 /-- Object function of limit functor in `Trees` -/
-def limObj : Tree (∀ j, (F.obj j).1) where
+def limObj : tree (∀ j, (F.obj j).1) where
   val := { x | ∃ (h : ∀ j, x.mapEval j ∈ (F.obj j).2),
     ∀ ⦃i j⦄ (f : i ⟶ j), (F.map f ⟨_, h i⟩).val = x.mapEval j }
   property := by
@@ -144,7 +144,7 @@ def isLimit : Limits.IsLimit (limCone F) where
     simp_rw [← h]; intro _; rfl
 end TreeLimits
 
-theorem proj_fixing (F : ℕᵒᵖ ⥤ Trees) (k : ℕ)
+lemma proj_fixing (F : ℕᵒᵖ ⥤ Trees) (k : ℕ)
   (hF : ∀ n, Tree.Fixing (k + n) (F.map (homOfLE (Nat.le_succ n)).op)) n :
   Fixing (k + n) ((limCone F).π.app (Opposite.op n)) :=
   (fixing_iff_fixingEq (k + n) _).mpr (fun m hm ↦

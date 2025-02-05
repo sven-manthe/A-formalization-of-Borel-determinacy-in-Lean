@@ -2,7 +2,7 @@ import BorelDet.Proof.covering
 
 namespace GaleStewartGame
 open Classical CategoryTheory
-open Tree
+open Descriptive Tree
 namespace Covering
 
 noncomputable section
@@ -24,14 +24,14 @@ abbrev limConePt : PTrees := ⟨(limCone (F ⋙ PTreeForget)).pt, by
   all_goals intro n; exact (hF n).1.mon (by omega)⟩
 abbrev limCone_π_map n : (limConePt hF).1 ⟶ (F.obj (Opposite.op n)).1 :=
   (limCone (F ⋙ PTreeForget)).π.app ⟨n⟩
-theorem limCone_π_map_nat {n m : ℕ} (h : n ≤ m) :
+lemma limCone_π_map_nat {n m : ℕ} (h : n ≤ m) :
   limCone_π_map hF m ≫ (F.map (homOfLE h).op).toHom = limCone_π_map hF n :=
   ((limCone (F ⋙ PTreeForget)).π.naturality (homOfLE h).op).symm
 instance limCone_π_fixing_full k : Tree.Fixing (K + k) (limCone_π_map hF k) :=
   proj_fixing (F ⋙ PTreeForget) K (fun n ↦ (hF n).1) k
 
 open ResStrategy
-@[simp] theorem fromMap_comp' k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
+@[simp] lemma fromMap_comp' k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
   (hf : Tree.Fixing k f) (hg : Tree.Fixing k g)
   (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := by
@@ -49,7 +49,7 @@ def limCone_str n : PTreesS.mk (limConePt hF) ⟶ PTreesS.mk (F.obj (Opposite.op
     simp_rw [LvlStratHom.con, hsp, op_comp, Functor.map_comp, comp_covering_str_apply,
       ResStrategy.res_fromMap, ← limCone_π_map_nat hF ineq]
     rw [fromMap_comp', fixing_snd_mon (by simp : m ≤ m ⊔ n) _ (transition_fixing hF ineq)]
-theorem limCone_str_nat {n m : ℕ} (h : n ≤ m) :
+lemma limCone_str_nat {n m : ℕ} (h : n ≤ m) :
   limCone_str hF m ≫ (F.map (homOfLE h).op).str = limCone_str hF n := by
   ext p k S x hx hl; simp
   have ineq : k ⊔ n ≤ k ⊔ m := sup_le_sup_left h k
@@ -67,7 +67,7 @@ lemma cast_limCone_str {m m' : ℕ} (h : m' = m)
     = ResStrategy.fromMap (f := limCone_π_map hF m') (h := by subst h; exact hi) S
     := by subst h; simp
 
-theorem limCone_str_large S n x hx hl (h : k ≤ n) :
+lemma limCone_str_large S n x hx hl (h : k ≤ n) :
   (((limCone_str hF n).toFun p k S) (limCone_π_map hF n x)
     (by abstract synth_isPosition) (by simpa only [LenHom.h_length_simp])).valT'
   --no abstract causes problems after proof, so misunderstood def
@@ -100,7 +100,7 @@ def limCone_body_lifts (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
     have yc' := by simpa only [← limCone_str_nat hF (ineq_rec n k)] using ih.2
     ⟨covering_lift_bodySystem (map_ineq_rec n k) ih.1 S' yc',
     covering_lift_bodySystem_spec1 (map_ineq_rec n k) ih.1 S' yc'⟩
-theorem limCone_body_is_lift (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
+lemma limCone_body_is_lift (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
   (y : bodySystem.obj (F.obj (Opposite.op (n ⊔ 0))).1)
   (yc : consistent y ((LvlStratHom.system p).map (limCone_str hF (n ⊔ 0)) S)) k m :
   (resEq m).map (map_ineq_rec n k).toHom ((limCone_body_lifts hF S y yc (k + 1)).1.res m)
@@ -156,11 +156,11 @@ lemma cast_lifts' {m n} (h : m = n) {S : (LvlStratHom.system p).obj ⟨limConePt
   = ⟨((limCone_body_lifts hF S y hy n).1.res n).val, by apply resEq_mem⟩ :=
   by subst h; rfl
 
-theorem take_apply_val_resEq {S T} (f : S ⟶ T) (k n : ℕ) (x : (resEq k).obj S) :
+lemma take_apply_val_resEq {S T} (f : S ⟶ T) (k n : ℕ) (x : (resEq k).obj S) :
   (f ⟨x.val.take n, take_mem (resEq.val' x)⟩).val = (f (resEq.val' x)).val.take n :=
   by apply take_apply_val (x := resEq.val' x)
 
-theorem limCone_body_consistent (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
+lemma limCone_body_consistent (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
     (y : bodySystem.obj (F.obj (Opposite.op (n ⊔ 0))).1)
     (yc : consistent y ((LvlStratHom.system p).map (limCone_str hF (n ⊔ 0)) S)) :
     consistent (limCone_body_system hF S y yc) S := by
@@ -201,14 +201,14 @@ lemma lifts_cast_lifts (hm : m = m') (hn : n = n') (y : bodySystem.obj (F.obj (O
   cast (by rw [hm]) ((cast (by rw [hm]) y : bodySystem.obj (F.obj (Opposite.op m')).1).res n).val
   = (y.res n').val := by subst hm hn; rfl
 
-theorem limCone_body_is_lift' (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
+lemma limCone_body_is_lift' (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
   (y : bodySystem.obj (F.obj (Opposite.op (n ⊔ 0))).1)
   (yc : consistent y ((LvlStratHom.system p).map (limCone_str hF (n ⊔ 0)) S)) k m :
   ((map_ineq_rec n k).toHom
     (resEq.val' ((limCone_body_lifts hF S y yc (k + 1)).1.res m)))
   = resEq.val' ((limCone_body_lifts hF S y yc k).1.res m) := by
   ext1; apply congr_arg Subtype.val (limCone_body_is_lift hF S y yc k m)
-theorem limCone_body_is_lift_fin (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
+lemma limCone_body_is_lift_fin (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
   (y : bodySystem.obj (F.obj (Opposite.op (n ⊔ 0))).1)
   (yc : consistent y ((LvlStratHom.system p).map (limCone_str hF (n ⊔ 0)) S)) k m :
   ((F.map (homOfLE (by simp)).op).toHom
@@ -216,13 +216,13 @@ theorem limCone_body_is_lift_fin (S : (LvlStratHom.system p).obj ⟨limConePt hF
   = (y.res m).val := by
   show _ = (resEq.val' (y.res m)).val; congr 1
   induction' k with k ih
-  · simp only [homOfLE_refl', op_id, CategoryTheory.Functor.map_id]; rfl
+  · simp [limCone_body_lifts]
   · have h : F.map (homOfLE (by simp)).op
       = map_ineq_rec n k ≫ F.map (homOfLE (by simp : n ⊔ 0 ≤ n ⊔ k)).op := by
       rw [map_ineq_rec, ← Functor.map_comp]; congr
     rwa [h, comp_covering_toHom, comp_apply, limCone_body_is_lift']
 
-theorem limCone_body_system_lift (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
+lemma limCone_body_system_lift (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
   (y : bodySystem.obj (F.obj (Opposite.op n)).1)
   (yc : consistent (cast (by simp) y) ((LvlStratHom.system p).map (limCone_str hF (n ⊔ 0)) S)) :
   bodySystem.map (limCone_π_map hF n) (limCone_body_system hF S _ yc) = y := by
@@ -252,7 +252,7 @@ def limCone : Limits.Cone F where
     naturality := fun ⦃_ _⦄ f ↦
       Covering.ext ((Tree.limCone _).π.naturality f) ((limCone_str_nat hF _).symm)
   }
-theorem limCone_fixing n : Fixing (K + n) ((limCone hF).π.app (Opposite.op n)) := by
+lemma limCone_fixing n : Fixing (K + n) ((limCone hF).π.app (Opposite.op n)) := by
   use limCone_π_fixing_full hF n; intro p; ext S
   simp_rw [limCone, limCone_π, limCone_str,
     (transition_fixing_full hF (by simp : n ≤ (K + n) ⊔ n)).2 p,

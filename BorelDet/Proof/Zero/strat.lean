@@ -1,7 +1,7 @@
 import BorelDet.Proof.Zero.tree_lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
@@ -84,7 +84,7 @@ lemma body_lost_of_losable n (h : (takeLift y n).Losable) (h' : ∀ m, ¬ (takeL
   have : ((y.val.take (2 * k + 2 + n)).drop (2 * k + 1)).take pf.num
     ++ₛ y.val.drop (2 * k + 1 + pf.num) = y.val.drop (2 * k + 1) := by
     have hnat : 2 * k + 2 + n = (2 * k + 1) + (1 + n) := by omega
-    rw [← add_comm pf.num, ← Stream'.drop_drop]
+    rw [← Stream'.drop_drop]
     conv => lhs; lhs; rhs; rw [hnat, ← Stream'.take_drop]
     rw [Stream'.take_take]
     have : pf.num ≤ 1 + n := by
@@ -131,7 +131,7 @@ lemma lostLift_map (h : (takeLift y n).Lost) :
   (bodyFunctor.map π ⟨(lostLift y h).val, body_mono R.pre.subtree_sub (lostLift y h).prop⟩).val
   = y.val := by ext; simp [lostLift, Stream'.get, Stream'.map]
 
-theorem body_stratMap :
+lemma body_stratMap :
   ∃ x : body R.pre.subtree, (bodyFunctor.map π
     ⟨x.val, body_mono R.pre.subtree_sub x.prop⟩).val = y.val :=
   if h : ∀ n, (takeLift y n).Winnable then ⟨wonLift y h, wonLift_map y h⟩

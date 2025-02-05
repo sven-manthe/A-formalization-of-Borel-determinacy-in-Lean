@@ -1,7 +1,7 @@
 import BorelDet.Proof.covering
 
 namespace GaleStewartGame.BorelDet
-open Stream'.Discrete Tree
+open Stream'.Discrete Descriptive Tree
 open Classical CategoryTheory
 noncomputable section
 
@@ -13,7 +13,7 @@ structure Hyp (G : Game A) (k : ℕ) where
 variable {G : Game A} {k : ℕ} (hyp : Hyp G k)
 --the second component is the residual tree of valid extensions
 set_option linter.unusedVariables false in
-def upA (hyp : Hyp G k) := A × Tree A
+def upA (hyp : Hyp G k) := A × tree A
 set_option hygiene false
 scoped notation "A'" => (upA hyp)
 def getTree' (x : List A') := match x.getLast? with
@@ -41,7 +41,7 @@ def WinningCondition (x : List A') (h : x.length = 2 * k + 2) :=
   body (pullSub (getTree x) (x.map Prod.fst)) ⊆ G.payoff ∧
   ∃ S' : QuasiStrategy (subAt (getTree (x.take (2 * k + 1))) [x[2 * k + 1].1]) Player.one,
     getTree x = S'.1.subtree
-lemma cast_subtree {A} {T T' : Tree A} {p p'} (hT : T = T') (hp : p = p') (S : QuasiStrategy T p) :
+lemma cast_subtree {A} {T T' : tree A} {p p'} (hT : T = T') (hp : p = p') (S : QuasiStrategy T p) :
   (cast (by rw [hT, hp]) S : QuasiStrategy T' p').1.subtree = S.1.subtree := by subst hT hp; rfl
 lemma WinningCondition.concat {x : List A'} {a h} :
   WinningCondition (x ++ [a]) h ↔
@@ -79,7 +79,7 @@ def ValidExt (x : List A') (a : A') := [a.1] ∈ getTree x ∧
 
 variable (hyp)
 /-- the tree of the unraveled game of a closed game -/
-def gameTree : Tree A' where
+def gameTree : tree A' where
   val := {x | List.reverseRecOn x True (fun x a hx ↦ hx ∧ ValidExt x a)}
   property _ := by simp; tauto
 set_option linter.unusedVariables false in --include hyp in doesn't suffice
@@ -100,7 +100,7 @@ lemma getTree_sub (x : T') :
       gcongr; exact ih h
     · rcases h2 with h2 | h2
       · obtain ⟨y, h2⟩ := h2.of_concat; rw [h2, List.append_cons, ← subAt_append]
-        apply pullSub_triangle
+        apply pullSub_subAt
       · obtain ⟨S', h2⟩ := h2.of_concat; rw [h2, ← subAt_append]
         apply le_trans S'.1.subtree_sub
         gcongr; exact ih h
@@ -156,7 +156,9 @@ end
 
 variable (hyp)
 def treeHom : gameAsTrees hyp ⟶ oldAsTrees hyp where
-  toFun x := ⟨x.val.map Prod.fst, by simpa using getTree_sub x (getTree_ne_and_pruned x).1⟩
+  toFun x := ⟨x.val.map Prod.fst, by
+    have h : [] ∈ subAt _ _ := getTree_sub x (getTree_ne_and_pruned x).1
+    simpa using h⟩
   monotone' _ _ h := h.map Prod.fst
   h_length := by simp
 scoped notation "π" => (treeHom hyp)
@@ -289,7 +291,7 @@ lemma wins_iff_answer (x : body (G').tree) :
   · simp; rw [← Subtype.val_injective.mem_set_image]; exact h.1 (by simpa using hmem)
 instance : TopologicalSpace A' := ⊥
 instance : DiscreteTopology A' where eq_bot := rfl
-theorem payoff_clopen : IsClopen (G').payoff := by
+lemma payoff_clopen : IsClopen (G').payoff := by
   let f : (Stream' A') → Bool := (fun x ↦ ∃ h, WinningCondition x h) ∘ Stream'.take (2 * k + 2)
   suffices Continuous f by
     convert ((isClopen_discrete {true}).preimage this).preimage continuous_subtype_val
@@ -341,7 +343,7 @@ lemma getTree_lost
       simpa [hax, Stream'.map_take] using (mem_getTree ⟨a.take (2 * k + 2 + n), take_mem_body ha2 _⟩).2
     · rw [hax, Stream'.map_take, Stream'.append_take_drop]
 lemma LosingCondition.not_lost_short {x : (G').tree} (hxl : 2 * k + 2 ≤ x.val.length)
-  (H: LosingCondition (Tree.take (2 * k + 2) x).val (by simpa))
+  (H : LosingCondition (Tree.take (2 * k + 2) x).val (by simpa))
   (hnL : ¬ G.WonPosition (x.val.map Prod.fst) (Player.one.residual x.val)) :
   x.val.length + 1 ≤ 2 * k + 2 + H.y.val.length := by
   by_contra hlen; simp [Nat.lt_iff_add_one_le] at hlen; apply hnL

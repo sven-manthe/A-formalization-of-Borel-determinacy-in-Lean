@@ -2,7 +2,7 @@ import BorelDet.Proof.covering_closed_game
 import BorelDet.Proof.win_asap
 
 namespace GaleStewartGame.BorelDet.Zero
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
@@ -130,7 +130,7 @@ end Lift
 
 variable (hyp) in
 @[ext (flat := false)] structure WLLift extends Lift hyp where
-  liftTree : Tree A
+  liftTree : tree A
 instance : Preorder (WLLift hyp) where
   le p q := p.toLift ≤ q.toLift
   le_refl _ := le_rfl (α := Lift hyp)

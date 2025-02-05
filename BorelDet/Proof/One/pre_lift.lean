@@ -2,7 +2,7 @@ import BorelDet.Proof.covering_closed_game
 import BorelDet.Proof.win_asap
 
 namespace GaleStewartGame.BorelDet.One
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
@@ -54,7 +54,7 @@ end PreLift
 
 variable (hyp) in
 @[ext (flat := false)] structure Lift extends PreLift hyp where
-  liftTree : Tree A
+  liftTree : tree A
   htree : ∃ S : QuasiStrategy (subAt T (x.val.take (2 * k + 1))) Player.one, liftTree = S.1.subtree
 @[simps] instance : Preorder (Lift hyp) where
   le p q := p.toPreLift ≤ q.toPreLift
@@ -66,7 +66,7 @@ def liftVeryShort : T' where
   val := (pInv π (Tree.take (2 * k) H.x)).val ++ [⟨H.x.val[2 * k]'H.hlvl, H.liftTree⟩]
   property := by
     simp [- pInv_treeHom_val]
-    simp [H.x.val.take_concat_get' (2 * k) (by have := H.hlvl; omega)]
+    simp [H.x.val.take_concat_get' (2 * k) (by have := H.hlvl; omega), Tree.take_mem]
     rw [H.gameTree_eq]; exact H.htree
 @[simp, simp_lengths] lemma liftVeryShort_length :
   H.liftVeryShort.val.length (α := no_index _) = 2 * k + 1 := by simp [liftVeryShort]

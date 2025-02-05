@@ -1,7 +1,7 @@
 import BorelDet.Proof.Zero.lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
@@ -13,7 +13,8 @@ def stratMap (lvl : ℕ) (R : ResStrategy ⟨_, T'⟩ Player.zero lvl) :
   if _ : x.val.length ≤ 2 * k then (ResStrategy.fromMap π) (R.res hlen) x hp le_rfl
   else
     let pL : PreLift hyp := ⟨x, by omega, R.res (by omega)⟩
-    if hpL : pL.ConShort then (Lift.mk pL (by synth_isPosition) hpL).extension hp (R.res hlen)
+    if hpL : pL.ConShort
+    then (Lift.mk pL (by unfold pL; synth_isPosition) hpL).extension hp (R.res hlen)
     else choice (hyp.pruned x)
 def stratMap' (R : Strategy T' Player.zero) : Strategy G.tree Player.zero :=
   fun x hp ↦ stratMap x.val.length ((strategyEquivSystem R).str _) x hp le_rfl
@@ -53,7 +54,7 @@ lemma conShort : H.preLift.ConShort := by
   rw [List.getElem_append_right (by simp)]
   simpa [stratMap', stratMap, strategyEquivSystem, ResStrategy.fromMap] using
     congr_arg Subtype.val <| subtree_compatible _ (Tree.take (2 * k) H.x)
-    (a := H.x.val[2 * k]'H.hlvl) (by have := H.hlvl'; synth_isPosition) (by simp)
+    (a := H.x.val[2 * k]'H.hlvl) (by have := H.hlvl'; synth_isPosition) (by simp [Tree.take_mem])
 @[simps toPreLift] def lift (h : 2 * k + 2 ≤ H.x.val.length) : Lift hyp where
   toPreLift := H.preLift
   h'lvl := h
@@ -111,7 +112,7 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Losable := ih''.2
         simp at ih'
         have hm := H.x_mem_tree' (by abstract omega) (by abstract synth_isPosition)
-        simp [hn, extension, Lift.extension, hW, ih'] at hm
+        simp [hn, extension, Lift.extension, hW, ih', Ht] at hm
         generalize_proofs _ _ hL hp at hm
         convert (hL.extension_losable hp).1; ext1
         · exact hm

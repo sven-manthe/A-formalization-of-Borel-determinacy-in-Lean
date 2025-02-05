@@ -1,7 +1,7 @@
 import BorelDet.Tree.len_tree_hom
 
 namespace GaleStewartGame.Tree
-open CategoryTheory
+open CategoryTheory Descriptive
 
 noncomputable section
 /-- A tree with a chosen base node -/
@@ -39,8 +39,8 @@ variable {S T : PointedTrees}
 @[simp] lemma pair_toHom (f : S.1 ⟶ T.1) hf :
   PointedLenHom.toHom ⟨f, hf⟩ = f := rfl
 @[simp] lemma hp_simp (f : S ⟶ T) : f.toHom S.2 = T.2 := f.hp
-@[simp] theorem id_toLenHom (S : PointedTrees) : (𝟙 S : S ⟶ S).toHom = 𝟙 S.1 := rfl
-@[simp] theorem comp_toLenHom {S T U : PointedTrees} (f : S ⟶ T) (g : T ⟶ U) :
+@[simp] lemma id_toLenHom (S : PointedTrees) : (𝟙 S : S ⟶ S).toHom = 𝟙 S.1 := rfl
+@[simp] lemma comp_toLenHom {S T U : PointedTrees} (f : S ⟶ T) (g : T ⟶ U) :
   (f ≫ g).toHom = f.toHom ≫ g.toHom := rfl
 end PointedLenHom
 abbrev forgetPoint : PointedTrees ⥤ Trees where
@@ -52,12 +52,12 @@ instance : forgetPoint.ReflectsIsomorphisms where
     use ⟨inv (forgetPoint.map f), by rw [← f.hp]; apply cancel_inv_left (C := Trees)⟩
     constructor <;> (ext x; simp)
 
-@[simp] theorem pointed_isIso_iff {S T : PointedTrees} (f : S ⟶ T) :
+@[simp] lemma pointed_isIso_iff {S T : PointedTrees} (f : S ⟶ T) :
   IsIso f ↔ IsIso (forgetPoint.map f) := (isIso_iff_of_reflects_iso f _).symm
 
 section
 variable {S T : Trees} {x : List S.1} {a : S.1} (f : S ⟶ T) (hx : x ++ [a] ∈ S.2)
-theorem apply_concat :
+lemma apply_concat :
   ∃ b, (f ⟨_, hx⟩).val = (f ⟨x, mem_of_append hx⟩).val ++ [b] := by
   let ⟨lb, (hlb : (f _).val = (f _).val ++ _)⟩ := apply_append f.toOrderHom hx
   replace hbl := congr_arg List.length hlb
@@ -65,16 +65,16 @@ theorem apply_concat :
     add_right_inj] at hbl
   obtain ⟨b, rfl⟩ := List.length_eq_one.mp hbl.symm; use b
 def concat : T.1 := (apply_concat f hx).choose
-theorem concat_spec :
+lemma concat_spec :
   (f ⟨_, hx⟩).val = (f ⟨x, mem_of_append hx⟩).val ++ [concat f hx] :=
   (apply_concat f hx).choose_spec
-theorem concat_elem :
+lemma concat_elem :
   (f ⟨x, mem_of_append hx⟩).val ++ [concat f hx] ∈ T.2 := by
   rw [← concat_spec]; apply SetLike.coe_mem
-theorem concat_spec' :
+lemma concat_spec' :
   f ⟨_, hx⟩ = ⟨(f ⟨x, mem_of_append hx⟩).val ++ [concat f hx], concat_elem f hx⟩ := by
   ext1; apply concat_spec
-theorem concat_uniq b (hb : (f ⟨x, mem_of_append hx⟩).val ++ [b] = (f ⟨_, hx⟩).val) :
+lemma concat_uniq b (hb : (f ⟨x, mem_of_append hx⟩).val ++ [b] = (f ⟨_, hx⟩).val) :
   concat f hx = b := by
   symm; rwa [← List.singleton_inj, ← List.append_right_inj, ← concat_spec]
 end
@@ -97,11 +97,11 @@ def extensions.val' {T : PointedTrees} (a : extensions.obj T) : List T.1.1 :=
   T.2.val ++ [a.val]
 @[simps] def extensions.valT' {T : PointedTrees} (a : extensions.obj T) : T.1 :=
   ⟨extensions.val' a, a.prop⟩
-@[simp] theorem extensions_map_val' {S T : PointedTrees}
+@[simp] lemma extensions_map_val' {S T : PointedTrees}
   (f : S ⟶ T) (a : extensions.obj S) :
   extensions.val' (extensions.map f a) = (f.toHom ⟨extensions.val' a, a.prop⟩).val := by
   simp [extensions.val', extensions, concat_spec']
-@[simp] theorem extensions_map_valT' {S T : PointedTrees}
+@[simp] lemma extensions_map_valT' {S T : PointedTrees}
   (f : S ⟶ T) (a : extensions.obj S) :
   extensions.valT' (extensions.map f a) = f.toHom ⟨extensions.val' a, a.prop⟩ :=
   tree_ext (extensions_map_val' f a)
@@ -111,13 +111,13 @@ def mkPointedMor {S T : Trees} (f : S ⟶ T) (x : S) :
 
 namespace ExtensionsAt
 variable {S T : Trees} (f : S ⟶ T) {x : T}
-theorem eq_obj (x : T) : ExtensionsAt x = extensions.obj (mkPointed x) := rfl
+lemma eq_obj (x : T) : ExtensionsAt x = extensions.obj (mkPointed x) := rfl
 abbrev map ⦃x : S⦄ ⦃y : T⦄ (h : f x = y) (a : ExtensionsAt x) : ExtensionsAt y :=
   extensions.map (X := mkPointed x) (Y := mkPointed y) ⟨f, h⟩ a
-@[simp] theorem map_val' ⦃x : S⦄ ⦃y : T⦄
+@[simp] lemma map_val' ⦃x : S⦄ ⦃y : T⦄
   (h : f x = y) (a : ExtensionsAt x) : (map f h a).val' (A := no_index _) = (f a.valT').val :=
   extensions_map_val' (S := mkPointed x) (T := mkPointed y) ⟨f, h⟩ a
-@[simp] theorem map_valT' ⦃x : S⦄ ⦃y : T⦄ (h : f x = y) (a : ExtensionsAt x) :
+@[simp] lemma map_valT' ⦃x : S⦄ ⦃y : T⦄ (h : f x = y) (a : ExtensionsAt x) :
   (map f h a).valT' (A := no_index _) = f a.valT' :=
   extensions_map_valT' (S := mkPointed x) (T := mkPointed y) ⟨f, h⟩ a
 end ExtensionsAt

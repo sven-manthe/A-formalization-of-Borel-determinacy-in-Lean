@@ -6,10 +6,11 @@ import BorelDet.Basic.misc_cat
 open CategoryTheory
 
 namespace GaleStewartGame.Tree
+open Descriptive
 noncomputable section
 
 /-- The objects of the category of trees -/
-def Trees := Σ A, Tree A
+def Trees := Σ A, tree A
 variable {S T U : Trees}
 /-- The morphisms in the category of trees, length-preserving order-preserving maps -/
 @[ext] structure LenHom (S T : Trees) extends OrderHom S.2 T.2 where
@@ -28,7 +29,7 @@ def forget_PO : Trees ⥤ PartOrd where
   map f := f.toOrderHom
 instance : forget_PO.Faithful where
   map_injective {_ _} _ _ h := LenHom.ext (congr_arg OrderHom.toFun h)
-instance : ConcreteCategory Trees where
+instance : HasForget Trees where
   forget := Functor.comp Tree.forget_PO (forget PartOrd)
 instance : OrderHomClass (S ⟶ T) S.2 T.2 where
   map_rel f _ _ h := f.toOrderHom.monotone' h
@@ -38,29 +39,29 @@ instance : OrderHomClass (S ⟶ T) S.2 T.2 where
 @[ext] lemma tree_ext {x y : S} (h : x.val = y.val) : x = y := Subtype.ext h
 instance : PartialOrder S := by rw [← rem_trees_snd]; infer_instance
 @[simp] lemma le_def_trees (x y : T) : x ≤ y ↔ x.val <+: y.val := Iff.rfl
-@[simp] theorem rem_toOrderHom (f : S ⟶ T) :
+@[simp] lemma rem_toOrderHom (f : S ⟶ T) :
   DFunLike.coe (F := S →o T) f.toOrderHom = f := rfl
-theorem rem_toFun (f : S ⟶ T) (x : S) : f.toFun x = f x := by dsimp
-@[simp] theorem forget_map (f : S ⟶ T) : (forget Trees).map f = f := rfl
+lemma rem_toFun (f : S ⟶ T) (x : S) : f.toFun x = f x := by dsimp
+@[simp] lemma forget_map (f : S ⟶ T) : (forget Trees).map f = f := rfl
 
 namespace LenHom
-theorem id_toFun (S : Trees) : (𝟙 S : S ⟶ S).toFun = _root_.id := rfl
-theorem comp_toFun (f : S ⟶ T) (g : T ⟶ U) :
+lemma id_toFun (S : Trees) : (𝟙 S : S ⟶ S).toFun = _root_.id := rfl
+lemma comp_toFun (f : S ⟶ T) (g : T ⟶ U) :
   (f ≫ g).toFun = g.toFun ∘ f.toFun := rfl
 instance {S T : Trees} (f : S ⟶ T) [IsIso f] : IsIso (C := Type*) f.toFun :=
   inferInstanceAs (IsIso ((forget Trees).map f))
-theorem inv_toFun {S T : Trees} (f : S ⟶ T) [IsIso f] :
+lemma inv_toFun {S T : Trees} (f : S ⟶ T) [IsIso f] :
   (inv f).toFun = inv (C := Type*) f.toFun :=
   (IsIso.Iso.inv_hom ((forget Trees).mapIso (asIso f))).symm
 
-@[simp, simp_lengths] theorem h_length_simp (f : S ⟶ T) (x : S) :
+@[simp, simp_lengths] lemma h_length_simp (f : S ⟶ T) (x : S) :
   (f x).val.length (α := no_index _) = x.val.length (α := no_index _) := f.h_length x
-@[simp] theorem h_length_inv (f : S ⟶ T) [IsIso (C := Type*) (f.toFun)] (x : T) :
+@[simp] lemma h_length_inv (f : S ⟶ T) [IsIso (C := Type*) (f.toFun)] (x : T) :
   (inv (C := Type _) f.toFun x).val.length = x.val.length := by
   simp [← h_length_simp f]
-@[simp] theorem map_nil (f : S ⟶ T) (h : [] ∈ S.2) : (f ⟨[], h⟩).val = [] := by
+@[simp] lemma map_nil (f : S ⟶ T) (h : [] ∈ S.2) : (f ⟨[], h⟩).val = [] := by
   apply List.eq_nil_of_length_eq_zero; simp
-theorem map_ne_nil (f : S ⟶ T) {x : S} (h : x.val ≠ []) : (f x).val ≠ [] := by
+lemma map_ne_nil (f : S ⟶ T) {x : S} (h : x.val ≠ []) : (f x).val ≠ [] := by
   intro h'; apply_fun List.length at h'
   exact h <| List.length_eq_zero.mp <| by simpa using h'
 
@@ -68,15 +69,15 @@ lemma mk_eval (S T : Trees) (f : S → T) hf1 hf2 (x : S) :
   DFunLike.coe (F := S ⟶ T) (no_index ⟨⟨f, hf1⟩, hf2⟩) x = f x := rfl
 end LenHom
 
-theorem take_apply (f : S ⟶ T) (n : ℕ) (x : S) :
+lemma take_apply (f : S ⟶ T) (n : ℕ) (x : S) :
   f (take n x) = take n (f x) := by
   ext1; apply List.IsPrefix.eq_of_length
   · simpa [List.prefix_take_iff] using f.monotone' (List.take_prefix n x.val)
   · simp only [LenHom.h_length_simp, take_coe, List.length_take]
-theorem take_apply_val (f : S ⟶ T) (n : ℕ) (x : S) :
+lemma take_apply_val (f : S ⟶ T) (n : ℕ) (x : S) :
   (f (take n x)).val = (f x).val.take n :=
   congr_arg Subtype.val (take_apply f n x)
-theorem prefix_iff (f : S ⟶ T) x y (hf : Function.Injective f) :
+lemma prefix_iff (f : S ⟶ T) x y (hf : Function.Injective f) :
   f x ≤ f y ↔ x ≤ y := by
   constructor <;> intro h
   · simp [List.prefix_iff_eq_take, ← take_apply_val, Subtype.val_inj] at h

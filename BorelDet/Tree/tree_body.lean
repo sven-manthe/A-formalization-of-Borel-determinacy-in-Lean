@@ -3,25 +3,25 @@ import BorelDet.Tree.trees
 
 namespace GaleStewartGame.Tree
 open CategoryTheory
-open Stream'.Discrete
+open Descriptive Stream'.Discrete
 
-variable {A : Type*} (S T : Tree A)
+variable {A : Type*} (S T : tree A)
 
 /-- The body of a tree T, also written [T] in the literature, is the set of infinite branches,
   implemented as `Stream` -/
 def body : Set (Stream' A) := { y | ∀ x, y ∈ principalOpen x → x ∈ T }
-@[gcongr] theorem body_mono {S T : Tree A} (h : S ≤ T) : body S ⊆ body T :=
+@[gcongr] lemma body_mono {S T : tree A} (h : S ≤ T) : body S ⊆ body T :=
   fun _ h' x y ↦ h (h' x y)
-@[simp] theorem take_mem_body {T : Tree A} {x} (h : x ∈ body T) n : x.take n ∈ T := h _ (by simp)
-@[simps coe] def body.take {T : Tree A} (n : ℕ) (x : body T) : T := ⟨_, take_mem_body x.2 n⟩
+@[simp] lemma take_mem_body {T : tree A} {x} (h : x ∈ body T) n : x.take n ∈ T := h _ (by simp)
+@[simps coe] def body.take {T : tree A} (n : ℕ) (x : body T) : T := ⟨_, take_mem_body x.2 n⟩
 attribute [simp_lengths] body.take_coe
-theorem mem_body_of_take m (T : Tree A) (x : Stream' A) (h : ∀ n ≥ m, x.take n ∈ T) :
+lemma mem_body_of_take m (T : tree A) (x : Stream' A) (h : ∀ n ≥ m, x.take n ∈ T) :
   x ∈ body T := by
   intro y hy; rw [principalOpen_iff_restrict] at hy
   simpa [← hy] using Tree.take_mem ⟨_, h (m + y.length) (by omega)⟩ (n := y.length)
 
 /-- Taking bodies preserves arbitrary intersections -/
-def bodyInfHom : sInfHom (Tree A) (Set (Stream' A)) where
+def bodyInfHom : sInfHom (tree A) (Set (Stream' A)) where
   toFun := Tree.body
   map_sInf' := by
     intro s; ext a; simp only [body, principalOpen, Set.image_univ, Set.mem_range,
@@ -30,16 +30,16 @@ def bodyInfHom : sInfHom (Tree A) (Set (Stream' A)) where
     constructor
     · rintro h T hT x a rfl; exact h x a rfl _ hT
     · rintro h x a rfl T hT; exact h T hT _ _ rfl
-@[simp] theorem body_inter {S T : Tree A} : body (S ⊓ T) = body S ∩ body T := by
+@[simp] lemma body_inter {S T : tree A} : body (S ⊓ T) = body S ∩ body T := by
   show bodyInfHom (S ⊓ T) = bodyInfHom S ∩ bodyInfHom T; simp
-@[simp] lemma body_bot : body (⊥ : Tree A) = ∅ := by
+@[simp] lemma body_bot : body (⊥ : tree A) = ∅ := by
   rw [Set.eq_empty_iff_forall_not_mem]; exact fun x h ↦ h [] (by simp)
-@[simp] theorem body_isClosed : IsClosed (body T) := by
+@[simp] lemma body_isClosed : IsClosed (body T) := by
   simp_rw [← isOpen_compl_iff, isOpen_iff_mem_nhds, mem_nhds_iff]
   intro a ha; simp [body] at ha; let ⟨x, ha1, ha2⟩ := ha
   exact ⟨principalOpen x, fun a ah h ↦ ha2 (h _ ah), principalOpen_isOpen x, ha1⟩
 
-@[simp] theorem subAt_body (x : List A) :
+@[simp] lemma subAt_body (x : List A) :
   body (subAt T x) = (x ++ₛ ·)⁻¹' (body T) := by
   ext a; constructor
   · intro h y ⟨b, h'⟩
@@ -53,10 +53,10 @@ def bodyInfHom : sInfHom (Tree A) (Set (Stream' A)) where
 
 /-- Appending lists to the front of a branch lifts as an operation on bodies -/
 @[simps (config := {fullyApplied := false}) coe]
-def body.append {T : Tree A} (x : List A) (y : body (subAt T x)) : body T :=
+def body.append {T : tree A} (x : List A) (y : body (subAt T x)) : body T :=
   ⟨x ++ₛ y.val, by simpa using y.prop⟩
 @[simp] lemma body_append_nil (y : body T) : body.append (T := no_index _) [] y = y := rfl
-theorem body.append_con {T : Tree A} (x : List A) : Continuous (@body.append A T x) :=
+lemma body.append_con {T : tree A} (x : List A) : Continuous (@body.append A T x) :=
   Topology.IsInducing.subtypeVal.continuous_iff.mpr <|
     (Stream'.Discrete.append_con x).comp continuous_subtype_val
 @[congr] lemma range_body_append (x y : List A) (h : x = y) :
@@ -68,11 +68,11 @@ theorem body.append_con {T : Tree A} (x : List A) : Continuous (@body.append A T
   · rintro ⟨⟨b, rfl⟩, ha⟩; use ⟨x ++ₛ b, ha⟩, ⟨⟨b, by simpa⟩, rfl⟩
 /-- Dropping the first elements of a branch lifts as an operation on bodies -/
 @[simps (config := {fullyApplied := false}) coe]
-def body.drop {T : Tree A} (n : ℕ) (x : body T) : body (subAt T (x.val.take n)) :=
+def body.drop {T : tree A} (n : ℕ) (x : body T) : body (subAt T (x.val.take n)) :=
   ⟨x.1.drop n, by simp⟩
 
 section
-variable {T : Tree A} (X : Set (body T)) (x : List A)
+variable {T : tree A} (X : Set (body T)) (x : List A)
 @[simp] lemma subAt_body_image : Subtype.val '' ((body.append x)⁻¹' X)
   = (x ++ₛ ·)⁻¹' (Subtype.val '' X) := by
   ext; simp; tauto
@@ -80,7 +80,7 @@ lemma mem_subAt_body y : y ∈ (body.append x)⁻¹' X ↔ x ++ₛ y.val ∈ Sub
   simp [body.append, by simpa using y.prop]
 end
 
-@[simp] theorem pullSub_body (T : Tree A) (x : List A) :
+@[simp] lemma pullSub_body (T : tree A) (x : List A) :
   body (pullSub T x) = (x ++ₛ ·) '' body T := by
   ext y; constructor
   · intro h; obtain ⟨z, hzT, hzE⟩ :=
@@ -94,7 +94,7 @@ end
     intro n hn; obtain ⟨m, rfl⟩ := le_iff_exists_add.mp hn; rw [← Stream'.append_take]
     simp [haB]
 
-theorem IsPruned.body_ne_iff_ne {T : Tree A} (h : IsPruned T) :
+lemma IsPruned.body_ne_iff_ne {T : tree A} (h : IsPruned T) :
   (body T).Nonempty ↔ [] ∈ T := by
   constructor
   · intro ⟨a, ha⟩; apply ha; simp
@@ -106,8 +106,8 @@ theorem IsPruned.body_ne_iff_ne {T : Tree A} (h : IsPruned T) :
     · dsimp [f]
     · specialize ih (principalOpen_sub _ _ h'); rw [List.length_append, List.length_eq_one.mpr ⟨b, rfl⟩]
       obtain ⟨z, h'⟩ := h'; apply_fun (fun y ↦ y.get x.length) at h'; simp at h'
-      simp_rw [h', a]; congr!; simp [Stream'.get]
-theorem isPruned_iff_principalOpen_ne {T : Tree A} :
+      simp_rw [h', a]; congr!; simp [Stream'.get, f]
+lemma isPruned_iff_principalOpen_ne {T : tree A} :
   IsPruned T ↔ ∀ x : T, (principalOpen x ∩ body T).Nonempty := by
   constructor
   · intro hP x; obtain ⟨y, h⟩ := (hP.sub x.val).body_ne_iff_ne.mpr (by simp)

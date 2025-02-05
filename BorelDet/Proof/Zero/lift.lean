@@ -1,7 +1,7 @@
 import BorelDet.Proof.Zero.pre_lift
 
 namespace GaleStewartGame.BorelDet.Zero
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k : ℕ} {hyp : Hyp G k} {m n : ℕ}
@@ -56,7 +56,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
         simpa only [this] using hS)
     simp_rw [pullSub_body, Set.image_subset_iff]
     apply subset_trans h; simp [PreLift.game_payoff]
-    intro x; rw [residual_payoff_odd _ _ (by simp [Nat.add_mod])]
+    intro _
     simp [Lift.liftNode, ← Stream'.append_eq_cons, ← Stream'.append_append_stream]
 @[simps toWLLift] def toWLift' : WLLift' hyp where
   toWLLift := H.toWLift
@@ -79,7 +79,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
         · simp [List.take_take, WLLift.liftVal]
         · rw [List.getElem_drop', List.take_concat_get']
 attribute [simp_lengths] toWLift'_toWLLift
-/-theorem extracted_1 {H : WLLift' hyp} (hp) (R) (h') :
+/-lemma extracted_1 {H : WLLift' hyp} (hp) (R) (h') :
   (ExtensionsAt.val' (ExtensionsAt.map π (x := H.lift)
     (y := @PreLift.x A inferInstance G k hyp H.toPreLift) h' (H.extension hp R))) =
     ... := by
@@ -258,7 +258,7 @@ variable (hp : IsPosition H.x.val Player.zero)
 def a : ExtensionsAt h.x' := h.2.strat h.x' (by have := H.hlvl; synth_isPosition)
 def extension : ExtensionsAt H.x where
   val := (h.a hp).val
-  property := by simpa [← List.append_assoc] using H.game_tree_sub (h.a hp).prop
+  property := by simpa [subAt, ← List.append_assoc] using H.game_tree_sub (h.a hp).prop
 @[simps] def extensionPreLift : PreLift hyp where
   x := (h.extension hp).valT'
   R := H.R

@@ -2,25 +2,25 @@ import BorelDet.Game.build_strategies
 
 namespace GaleStewartGame
 open Classical
-open Stream'.Discrete Tree PreStrategy
+open Stream'.Discrete Descriptive Tree PreStrategy
 
 /-!
 #Closed determinacy
 
-This file proves the Gale-Stewart theorem on the determinacy of closed games. More precisely, the
+This file proves the Gale-Stewart lemma on the determinacy of closed games. More precisely, the
 defensive strategy is winning for closed games.
 -/
 
-variable {A : Type*} {T : Tree A} {G G' : Game A} {p p' : Player}
+variable {A : Type*} {T : tree A} {G G' : Game A} {p p' : Player}
 
-theorem PreStrategy.cast_quasi {T T' : Tree A} {p p' : Player} (hT : T = T') (hP : p = p')
+lemma PreStrategy.cast_quasi {T T' : tree A} {p p' : Player} (hT : T = T') (hP : p = p')
   (S : PreStrategy T p) :
   (cast (by rw [hT, hP]) S : PreStrategy T' p').IsQuasi ↔ S.IsQuasi := by subst hT hP; rfl
-theorem PreStrategy.cast_winning {G G' : Game A} (h : G = G') (S : PreStrategy G.tree p) :
+lemma PreStrategy.cast_winning {G G' : Game A} (h : G = G') (S : PreStrategy G.tree p) :
   (cast (by rw [h]) S : PreStrategy G'.tree p).IsWinning
   ↔ S.IsWinning := by subst h; rfl
 namespace Game
-theorem defensive_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
+lemma defensive_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
   (h : ¬ G.ExistsWinning p.swap) :
   (defensiveQuasi G p hP).1.subtree = (defensivePre G p).subtree := by
   refine preserveProp_eq_extQuasi _ ?_ hP ?_ ?_
@@ -46,10 +46,10 @@ theorem defensive_equals_pre {G : Game A} {p : Player} (hP : IsPruned G.tree)
     exact (existsWinning_iff_quasi.mp (hc a ha)).choose_spec
   · rintro rfl _; simpa [WinningPosition, ExistsWinning] using h
 
-theorem isClosed_image_payoff {G : Game A} :
+lemma isClosed_image_payoff {G : Game A} :
   IsClosed G.payoff ↔ IsClosed (Subtype.val '' G.payoff) :=
   (Topology.IsClosedEmbedding.subtypeVal (body_isClosed G.tree)).isClosed_iff_image_isClosed
-theorem defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tree) :
+lemma defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tree) :
   (defensivePre G Player.zero).IsWinning := by
   intro a ha; rw [Player.payoff_zero,
     ← (isClosed_image_payoff.mp hC).closure_eq,
@@ -63,22 +63,22 @@ theorem defensive_winning_isClosed (hC : IsClosed G.payoff) (hP : IsPruned G.tre
   rw [← Set.subset_empty_iff]; intro a' ⟨h1, h2⟩; apply hfa a'
   · simp [ExtensionsAt.val'] at h1; apply principalOpen_mono _ h1
     rw [(principalOpen_iff_restrict _ _).mp h]; simp; omega
-  · rw [Player.residual_odd _ _ (by simp; omega)] at h2; simpa using h2
+  · rw [Player.residual_odd _ _ (by simp)] at h2; simpa using h2
 
-theorem defensive_winning_isOpen (hC : IsOpen G.payoff) (hP : IsPruned G.tree) :
+lemma defensive_winning_isOpen (hC : IsOpen G.payoff) (hP : IsPruned G.tree) :
   (defensivePre G Player.one).IsWinning := by
   rw [← sew_residual (defensivePre G Player.one)]; apply sew_isWinning
   simp; intro a _; apply defensive_winning_isClosed
   · simpa using hC.preimage (body.append_con [a])
   · exact hP.sub _
-theorem gale_stewart_precise (h : IsClosed G.payoff) (hP : IsPruned G.tree)
+lemma gale_stewart_precise (h : IsClosed G.payoff) (hP : IsPruned G.tree)
   (h' : ¬ G.ExistsWinning Player.one) : (defensiveQuasi G Player.zero hP).1.IsWinning := by
   dsimp [IsWinning]; rw [defensive_equals_pre hP h' (p := Player.zero)]
   exact defensive_winning_isClosed h hP
-theorem gale_stewart (h : IsClosed G.payoff) (hP : IsPruned G.tree) : G.IsDetermined :=
+lemma gale_stewart (h : IsClosed G.payoff) (hP : IsPruned G.tree) : G.IsDetermined :=
   if h' : _ then ⟨Player.one, h'⟩
   else ⟨Player.zero, existsWinning_iff_quasi.mpr ⟨_, gale_stewart_precise h hP h'⟩⟩
-theorem gale_stewart_precise' (h : IsOpen G.payoff) (hP : IsPruned G.tree)
+lemma gale_stewart_precise' (h : IsOpen G.payoff) (hP : IsPruned G.tree)
   (h' : ¬ ∃ S : Strategy G.tree Player.zero, S.pre.IsWinning) :
   (defensiveQuasi G Player.one hP).1.IsWinning := by
   dsimp [IsWinning]; rw [defensive_equals_pre hP h' (p := Player.one)]

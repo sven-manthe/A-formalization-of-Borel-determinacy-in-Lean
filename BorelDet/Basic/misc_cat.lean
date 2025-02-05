@@ -11,23 +11,23 @@ variable {α C D : Type*} [Category C] [Category D]
 @[congr] lemma inv_congr {X Y : C} (f g : X ⟶ Y) [IsIso f] (h : f = g) :
   inv f = inv g (I := by subst h; infer_instance) := by simp [h]
 
-attribute [instance] ConcreteCategory.hasCoeToSort
-attribute [instance] ConcreteCategory.instFunLike
-instance [ConcreteCategory C] (X Y : C) :
+attribute [instance] HasForget.hasCoeToSort
+attribute [instance] HasForget.instFunLike
+instance [HasForget C] (X Y : C) :
   CoeFun (X ⟶ Y) fun _ => X → Y where coe f := f --TODO use elsewhere
-@[simp] lemma hom_inv_id_apply [ConcreteCategory C] {c d : C} --currently only for TopCat?
+@[simp] lemma hom_inv_id_apply [HasForget C] {c d : C} --currently only for TopCat?
   (f : c ≅ d) (x : d) : f.hom (f.inv x) = x := by
   rw [← comp_apply]; simp
-@[simp] lemma inv_hom_id_apply [ConcreteCategory C] {c d : C}
+@[simp] lemma inv_hom_id_apply [HasForget C] {c d : C}
   (f : c ≅ d) (x : c) : f.inv (f.hom x) = x := by
   rw [← comp_apply]; simp
-@[simp] lemma cancel_inv_left [ConcreteCategory C] {c d : C}
+@[simp] lemma cancel_inv_left [HasForget C] {c d : C}
   (f : c ⟶ d) [IsIso f] (x : c) : inv f (f x) = x := by
   rw [← comp_apply]; simp
-@[simp] lemma cancel_inv_right [ConcreteCategory C] {c d : C}
+@[simp] lemma cancel_inv_right [HasForget C] {c d : C}
   (f : c ⟶ d) [IsIso f] (x : d) : f (inv f x) = x := by
   rw [← comp_apply]; simp
-lemma naturality_apply [ConcreteCategory D] {F G : C ⥤ D} (α: F ⟶ G)
+lemma naturality_apply [HasForget D] {F G : C ⥤ D} (α: F ⟶ G)
   {c d : C} (f : c ⟶ d) (x : F.obj c) :
   α.app d (F.map f x) = G.map f (α.app c x) := by
   rw [← comp_apply, ← comp_apply, α.naturality]
@@ -69,7 +69,7 @@ def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ TypeMax.{u1, v1}) :
   isColimit :=
     { desc := fun s x => s.ι.app x.1 x.2
       uniq := fun s m w => funext fun ⟨j, x⟩ ↦ congr_fun (w j) x }
-theorem isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t : Limits.Cocone F) :
+lemma isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t : Limits.Cocone F) :
     Nonempty (Limits.IsColimit t)
     ↔ (∀ i, Mono (t.ι.app i)) ∧ Set.univ.PairwiseDisjoint (fun i ↦ Set.range (t.ι.app i))
     ∧ ∀ y, ∃ i x, t.ι.app i x = y := by
@@ -82,7 +82,7 @@ theorem isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t 
           if h : i = j then by subst h; exact Option.some else fun _ ↦ Option.none)
       }
       suffices Mono (t.ι.app i ≫ h.desc s) by apply mono_of_mono (t.ι.app i) (h.desc s)
-      simp; infer_instance
+      simp [s]; infer_instance
     · constructor
       · apply (pairwiseDisjoint_iff _).mpr; intros i x j y he
         let s : Limits.Cocone F := {
@@ -92,7 +92,7 @@ theorem isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t 
             if h : j = k then by subst h; exact Option.some ∘ Sum.inr else fun _ ↦ Option.none)
         }
         replace he : (t.ι.app i ≫ h.desc s) x = (t.ι.app j ≫ h.desc s) y := congr_arg (h.desc s) he
-        rw [h.fac, h.fac] at he; by_contra h; simp [h] at he
+        rw [h.fac, h.fac] at he; by_contra h; simp [s, h] at he
       exact Limits.Types.jointly_surjective F h
   · rintro ⟨h1, h2, h3⟩
     let s := coproductColimitCocone F
@@ -107,12 +107,12 @@ theorem isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t 
         exact (mono_iff_injective _).mp (h1 i) h
       · intro y; obtain ⟨i, x, h⟩ := h3 y; use ⟨i, x⟩
     exact asIso f; aesop_cat
-theorem colim_isIso --exists?
+lemma colim_isIso --exists?
   {F G : C ⥤ D} {s : Limits.Cocone F} {t : Limits.Cocone G}
   (hs : Limits.IsColimit s) (ht : Limits.IsColimit t) (f : F ≅ G) : IsIso (hs.map t f.hom) := by
   use ht.map s (f.inv); constructor <;>
     (apply Limits.IsColimit.hom_ext (by assumption); simp)
-theorem coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ TypeMax.{u1,v1}}
+lemma coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ TypeMax.{u1,v1}}
   {s : Limits.Cocone F} {t : Limits.Cocone G} (hs : Limits.IsColimit s) (ht : Limits.IsColimit t)
   (f : ∀ j, F.obj ⟨j⟩ ⟶ G.obj ⟨j⟩) :
   IsIso (hs.map t (Discrete.natTrans (fun ⟨j⟩ ↦ f j))) ↔ ∀ j, IsIso (f j) := by

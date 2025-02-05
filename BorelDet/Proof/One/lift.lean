@@ -1,7 +1,7 @@
 import BorelDet.Proof.One.pre_lift
 
 namespace GaleStewartGame.BorelDet.One
-open Stream'.Discrete Tree Game PreStrategy Covering
+open Stream'.Discrete Descriptive Tree Game PreStrategy Covering
 open Classical CategoryTheory
 
 variable {A : Type*} {G : Game A} {k m n : ℕ} {hyp : Hyp G k}
@@ -211,7 +211,7 @@ lemma uprop'_choose : HEq H.u.prop.choose H.uprop'.choose := by
         · apply Subtype.ext; simp
         · simp
         · rw [← heq]; symm; apply cast_subtree; simp [List.take_take]; rfl
-      simp [Lift.PreWonPos]; congr! 6
+      simp only [Lift.PreWonPos, ne_eq, extend_toPreLift, u_min_prefix, takeMin_x_coe]; congr! 6
       · congr!
       · simp [List.take_take]
   · apply proof_irrel_heq
