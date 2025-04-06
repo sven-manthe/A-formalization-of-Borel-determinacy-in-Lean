@@ -2,8 +2,8 @@ import Mathlib.CategoryTheory.Adjunction.Limits
 import BorelDet.Tree.restrict_tree
 import BorelDet.Basic.inv_limit_nat
 
-namespace GaleStewartGame.Tree
-open Classical CategoryTheory Descriptive
+namespace Descriptive.Tree
+open Classical CategoryTheory
 
 noncomputable section
 variable {A B : Type*} {m k n : ℕ}
@@ -39,8 +39,10 @@ def constTree (k : ℕ) : Type* ⥤ Trees where
     monotone' := fun _ _ h ↦ List.IsPrefix.map _ h
     h_length := by simp
   }
-  map_id _ := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext x.val.map_id
-  map_comp f g := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (List.map_map g f x.val).symm
+  map_id _ := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (by
+    simp_rw [CategoryTheory.id_apply]; exact x.val.map_id)
+  map_comp f g := ConcreteCategory.hom_ext _ _ fun x ↦ tree_ext (by
+    simp_rw [CategoryTheory.comp_apply]; exact List.map_map.symm)
 @[simp] lemma head_constTree_map {B} (k : ℕ) (f : A → B)
   {x : constTreeObj k A} (h : x.val ≠ []) :
   List.head (((constTree k).map f) x).val (LenHom.map_ne_nil _ h)
@@ -62,8 +64,8 @@ def resEq_counit k : resEq k ⋙ constTree k ⟶ 𝟭 _ where
   app := resEq_counit_comp k
   naturality := by
     rintro _ _ f; ext x
-    simp only [Functor.id_obj, Functor.comp_obj, Functor.comp_map, comp_apply, LenHom.mk_eval,
-      LenHom.h_length_simp, Functor.id_map, take_coe, resEq_counit_comp]
+    simp only [Functor.id_obj, Functor.comp_obj, Functor.comp_map, CategoryTheory.comp_apply,
+      LenHom.mk_eval, LenHom.h_length_simp, Functor.id_map, take_coe, resEq_counit_comp]
     rw [take_apply f x.val.length]
     by_cases hxl : x.val = []
     · rw [congr_arg List.length hxl]; rfl
@@ -75,8 +77,8 @@ def resEqAdj (k : ℕ) : constTree k ⊣ resEq k := Adjunction.mkOfUnitCounit {
   left_triangle := by
     ext A x; simp only [Functor.comp_obj, Functor.id_obj, resEq_counit,
       NatTrans.comp_app, whiskerRight_app, Functor.associator_hom_app, whiskerLeft_app,
-      Category.id_comp, comp_apply, LenHom.mk_eval, LenHom.h_length_simp, Set.mem_setOf_eq,
-      NatTrans.id_app', id_apply, take_coe, resEq_counit_comp]
+      Category.id_comp, CategoryTheory.comp_apply, LenHom.mk_eval, LenHom.h_length_simp,
+      Set.mem_setOf_eq, NatTrans.id_app', CategoryTheory.id_apply, take_coe, resEq_counit_comp]
     by_cases hxl : x.val = []
     · rw [congr_arg List.length hxl, hxl]; rfl
     · rw [headD_nonempty, head_constTree_map, ← headD_nonempty _ hxl, resEq_unit]
@@ -134,7 +136,7 @@ def isLimit : Limits.IsLimit (limCone F) where
   lift := isLimit_lift F
   fac := by
     intros; ext
-    simp_rw [isLimit_lift, comp_apply, limCone, Functor.const_obj_obj,
+    simp_rw [isLimit_lift, CategoryTheory.comp_apply, limCone, Functor.const_obj_obj,
       LenHom.mk_eval, List.mapEval_zip]
   uniq := by
     intro s f h; ext1; ext1
@@ -152,4 +154,4 @@ lemma proj_fixing (F : ℕᵒᵖ ⥤ Trees) (k : ℕ)
       ((fixing_iff_fixingEq (k + n) _).mp (by synth_fixing) m hm).prop) n le_rfl⟩)
 
 end
-end GaleStewartGame.Tree
+end Descriptive.Tree

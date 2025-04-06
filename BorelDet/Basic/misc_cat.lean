@@ -1,4 +1,3 @@
-import Mathlib.CategoryTheory.Limits.Types
 import Mathlib.CategoryTheory.Limits.Final
 import Mathlib.CategoryTheory.Category.Preorder
 import BorelDet.Basic.general
@@ -17,20 +16,20 @@ instance [HasForget C] (X Y : C) :
   CoeFun (X ⟶ Y) fun _ => X → Y where coe f := f --TODO use elsewhere
 @[simp] lemma hom_inv_id_apply [HasForget C] {c d : C} --currently only for TopCat?
   (f : c ≅ d) (x : d) : f.hom (f.inv x) = x := by
-  rw [← comp_apply]; simp
+  rw [← CategoryTheory.comp_apply]; simp
 @[simp] lemma inv_hom_id_apply [HasForget C] {c d : C}
   (f : c ≅ d) (x : c) : f.inv (f.hom x) = x := by
-  rw [← comp_apply]; simp
+  rw [← CategoryTheory.comp_apply]; simp
 @[simp] lemma cancel_inv_left [HasForget C] {c d : C}
   (f : c ⟶ d) [IsIso f] (x : c) : inv f (f x) = x := by
-  rw [← comp_apply]; simp
+  rw [← CategoryTheory.comp_apply]; simp
 @[simp] lemma cancel_inv_right [HasForget C] {c d : C}
   (f : c ⟶ d) [IsIso f] (x : d) : f (inv f x) = x := by
-  rw [← comp_apply]; simp
+  rw [← CategoryTheory.comp_apply]; simp
 lemma naturality_apply [HasForget D] {F G : C ⥤ D} (α: F ⟶ G)
   {c d : C} (f : c ⟶ d) (x : F.obj c) :
   α.app d (F.map f x) = G.map f (α.app c x) := by
-  rw [← comp_apply, ← comp_apply, α.naturality]
+  rw [← CategoryTheory.comp_apply, ← CategoryTheory.comp_apply, α.naturality]
 @[simp] lemma cancel_inv_left_types {c d : Type u}
   (f : c ⟶ d) [IsIso f] (x : c) : inv f (f x) = x := by
   apply cancel_inv_left (C := Type u)
@@ -61,7 +60,7 @@ instance {J} [Category J] {F} :
     Nonempty (Limits.IsColimit (Limits.Types.colimitCocone (J := J) F)) :=
   ⟨Limits.Types.colimitCoconeIsColimit F⟩
 
-def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ TypeMax.{u1, v1}) :
+def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ Type _) :
     Limits.ColimitCocone F where
   cocone :=
     { pt := Σj, F.obj j
@@ -69,7 +68,7 @@ def coproductColimitCocone {J : Type u1} (F : Discrete J ⥤ TypeMax.{u1, v1}) :
   isColimit :=
     { desc := fun s x => s.ι.app x.1 x.2
       uniq := fun s m w => funext fun ⟨j, x⟩ ↦ congr_fun (w j) x }
-lemma isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ TypeMax.{u1,v1}} (t : Limits.Cocone F) :
+lemma isCoprod_type_iff {J : Type u1} {F : Discrete J ⥤ Type (max u1 v1)} (t : Limits.Cocone F) :
     Nonempty (Limits.IsColimit t)
     ↔ (∀ i, Mono (t.ι.app i)) ∧ Set.univ.PairwiseDisjoint (fun i ↦ Set.range (t.ι.app i))
     ∧ ∀ y, ∃ i x, t.ι.app i x = y := by
@@ -112,7 +111,7 @@ lemma colim_isIso --exists?
   (hs : Limits.IsColimit s) (ht : Limits.IsColimit t) (f : F ≅ G) : IsIso (hs.map t f.hom) := by
   use ht.map s (f.inv); constructor <;>
     (apply Limits.IsColimit.hom_ext (by assumption); simp)
-lemma coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ TypeMax.{u1,v1}}
+lemma coprod_type_isIso_iff {J : Type u1} {F G : Discrete J ⥤ Type (max u1 v1)}
   {s : Limits.Cocone F} {t : Limits.Cocone G} (hs : Limits.IsColimit s) (ht : Limits.IsColimit t)
   (f : ∀ j, F.obj ⟨j⟩ ⟶ G.obj ⟨j⟩) :
   IsIso (hs.map t (Discrete.natTrans (fun ⟨j⟩ ↦ f j))) ↔ ∀ j, IsIso (f j) := by

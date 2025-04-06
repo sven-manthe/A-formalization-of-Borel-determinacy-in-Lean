@@ -112,8 +112,8 @@ lemma strat_eval_val_congr {p p'} (U U' : tree A) (hU : U = U') (hep : p = p')
 lemma prefix_strat_apply {G' p' y} (xy : x <+: y) (hG : G = G') (hp : p = p') {a} (hpa) :
   have xy' : y.take (h.of_prefix' xy hG hp).num = x.take h.num := by
     rw [h.prefix_num xy hG hp]; obtain ⟨z, rfl⟩ := xy; rw [List.take_append_of_le_length (by simp)]
-  ((h.of_prefix' xy hG hp).strat a hpa).val = (h.strat ⟨a.val, by abstract
-    subst hG; simpa [xy'] using a.prop⟩ (by abstract subst hG hp; simpa [xy'] using hpa)).val := by
+  ((h.of_prefix' xy hG hp).strat a hpa).val = (h.strat ⟨a.val, by as_aux_lemma =>
+    subst hG; simpa [xy'] using a.prop⟩ (by as_aux_lemma => subst hG hp; simpa [xy'] using hpa)).val := by
   have xy' : y.take (h.of_prefix' xy hG hp).num = x.take h.num := by
     rw [h.prefix_num xy hG hp]; obtain ⟨z, rfl⟩ := xy; rw [List.take_append_of_le_length (by simp)]
   subst hG hp; dsimp
@@ -124,7 +124,7 @@ lemma prefix_strat_apply' {G' p' y} (xy : x <+: y) (hG : G = G') (hp : p = p') {
   have xy' : y.take (h.of_prefix' xy hG hp).num = x.take h.num := by
     rw [h.prefix_num xy hG hp]; obtain ⟨z, rfl⟩ := xy; rw [List.take_append_of_le_length (by simp)]
   ((h.of_prefix' xy hG hp).strat a hpa).val = (h.strat a' (by
-    abstract subst hG hp; simpa [xy', ha] using hpa)).val := by
+    as_aux_lemma => subst hG hp; simpa [xy', ha] using hpa)).val := by
   rw [h.prefix_strat_apply xy hG hp]; congr!
 
 def shrink : WinningPrefix G p (x.take h.num) :=
@@ -152,7 +152,7 @@ lemma cast_val {T y} (h : x = y) (a : subAt T x) :
   Subtype.val (cast (by rw [h]) a) = a.val := by
   symm; apply (val_cast h a (cast (by rw [h]) a)).mp; rfl
 lemma hEq_drop_take {y} (hy : y ∈ subAt G.tree (x.take h.num)) (hxy) :
-  HEq (Tree.drop (h.shrink.extend y).num
+  HEq (Tree.drop _ (h.shrink.extend y).num
   (⟨List.take h.num x ++ y, hxy⟩ : G.tree)) (⟨y, hy⟩ : subAt _ _) := by
   rw [← cast_eq_iff_heq (e := by simp [lem1])]; simp [val_cast, lem2, lem1]
 universe u in
@@ -185,7 +185,7 @@ end WinningPrefix
 variable (G p)
 def winAsap : PreStrategy G.tree p := fun x hp ↦
   if h : WinningPrefix G p x.val then
-    {ExtensionsAt.drop.symm <| h.strat (Tree.drop h.num x) (by synth_isPosition)}
+    {ExtensionsAt.drop.symm <| h.strat (Tree.drop _ h.num x) (by synth_isPosition)}
   else Set.univ
 lemma mem_winAsap_subtree_of_no_prefix
   {x} {a} (h : ¬ WinningPrefix G p x) (ha : x ++ [a] ∈ G.tree) :
@@ -199,7 +199,7 @@ lemma mem_winAsap_subtree_of_no_prefix
 lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
   Tree.subAt (winAsap G p).subtree (x.take h.num) = h.strat.pre.subtree := by --TODO nice proof
   ext y; induction' y using List.reverseRecOn with y a ih
-  · simp; use (winAsap G p).subtree_sub ·
+  · simp; use ((winAsap G p).subtree_sub ·)
     intro h'; rcases h.num.eq_zero_or_eq_succ_pred with h'' | h''
     · simpa [h''] using h'
     · dsimp at h''
@@ -212,19 +212,19 @@ lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
       · rwa [List.take_concat_get' _ _ hlen, ← h'']
   · by_cases hp : IsPosition y (p.residual (x.take h.num)) <;>
       (constructor <;> (intro h'; simp [mem_of_append h', - residual_tree] at ih))
-    · rw [subtree_compatible_iff _ ⟨y, ih⟩ (by abstract synth_isPosition)]
+    · rw [subtree_compatible_iff _ ⟨y, ih⟩ (by as_aux_lemma => synth_isPosition)]
       use (winAsap G p).subtree_sub h'
       simp [← List.append_assoc] at h'
-      rw [subtree_compatible_iff _ ⟨_, mem_of_append h'⟩ (by abstract synth_isPosition)] at h'
+      rw [subtree_compatible_iff _ ⟨_, mem_of_append h'⟩ (by as_aux_lemma => synth_isPosition)] at h'
       simp [winAsap, h.shrink.extend y] at h' ⊢
       obtain ⟨_, h'⟩ := h'; apply_fun Subtype.val at h'
       apply ExtensionsAt.ext (x := (PreStrategy.subtree_incl _ ⟨_, _⟩)) --why necessary?
       rw [h']; simp; apply h.extend_strat_apply; apply h.hEq_drop_take
     · simp [← List.append_assoc]
-      rw [subtree_compatible_iff _ ⟨_, ih⟩ (by abstract synth_isPosition)]
+      rw [subtree_compatible_iff _ ⟨_, ih⟩ (by as_aux_lemma => synth_isPosition)]
       simp_rw [List.append_assoc]
       use h.strat.pre.subtree_sub h'
-      rw [subtree_compatible_iff _ ⟨_, mem_of_append h'⟩ (by abstract synth_isPosition)] at h'
+      rw [subtree_compatible_iff _ ⟨_, mem_of_append h'⟩ (by as_aux_lemma => synth_isPosition)] at h'
       obtain ⟨_, h'⟩ := h'; simp at h'
       apply_fun Subtype.val at h'
       simp [winAsap, h.shrink.extend y, Strategy.pre]
@@ -232,10 +232,10 @@ lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
       rw [h']; simp; symm
       apply h.extend_strat_apply
       apply h.hEq_drop_take
-    · rw [subtree_fair _ ⟨y, ih⟩ (by abstract synth_isPosition)]
+    · rw [subtree_fair _ ⟨y, ih⟩ (by as_aux_lemma => synth_isPosition)]
       exact (winAsap G p).subtree_sub h'
     · simp [← List.append_assoc]
-      rw [subtree_fair _ ⟨_, ih⟩ (by abstract synth_isPosition)]
+      rw [subtree_fair _ ⟨_, ih⟩ (by as_aux_lemma => synth_isPosition)]
       simpa [List.append_assoc] using h.strat.pre.subtree_sub h'
 lemma winAsap_body (x : body (winAsap G p).subtree)
   (h : ∃ n, WinningPrefix G p (x.val.take n)) :

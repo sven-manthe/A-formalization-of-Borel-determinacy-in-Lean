@@ -13,7 +13,7 @@ def PTrees := Σ' (T : Trees), IsPruned T.2 ∧ [] ∈ T.2
 @[simp] lemma pTrees_isPruned (T : PTrees) : IsPruned T.1.2 := T.2.1
 @[simp] lemma pTrees_ne (T : PTrees) : [] ∈ T.1.2 := T.2.2
 end Covering
-namespace Tree.ResStrategy
+namespace ResStrategy
 variable {T : Covering.PTrees} (S : ResStrategy T.1 p k)
 def choose_succ : ResStrategy T.1 p m :=
   fun x hp _ ↦ if h' : x.val.length ≤ k then S x hp h' else choice (T.2.1 x)
@@ -27,7 +27,7 @@ lemma res_surjective (h : m ≤ k) : (res h (T := T.1) (p := p)).Surjective :=
 lemma choose_system_self : S.choose_system.str k = S := by ext _ _ hl; simp [choose_succ, hl]
 lemma str_surjective : (fun (S : StrategySystem T.1 p) ↦ S.str k).Surjective :=
   fun S ↦ ⟨_, S.choose_system_self⟩
-end Tree.ResStrategy
+end ResStrategy
 namespace Covering
 structure PTreesS where
   tree : PTrees
@@ -75,7 +75,7 @@ lemma bodyLiftExists_iff_system
   {T U : PTrees} (toHom : T.1 ⟶ U.1) (str : PTreesS.mk T ⟶ PTreesS.mk U) :
   bodyLiftExists toHom str ↔ ∀ {p S} (y : bodySystem.obj U.1),
   consistent y ((LvlStratHom.system p).map str S) →
-  ∃ x : bodySystem.obj T.1, consistent x S ∧ Tree.bodySystem.map toHom x = y := by
+  ∃ x : bodySystem.obj T.1, consistent x S ∧ bodySystem.map toHom x = y := by
   constructor <;> intro h p S y
   · intro yc; obtain ⟨S, rfl⟩ := strategyEquivSystem.surjective S
     rw [← bodyEquivSystem_strat'] at yc; obtain ⟨x, hx⟩ := h ⟨_, yc⟩
@@ -102,7 +102,7 @@ namespace Covering
 instance : Category PTrees where
   Hom := Covering
   id T := ⟨𝟙 T.1, LvlStratHom.id _, fun y ↦ ⟨y, by simp⟩⟩
-  comp f g := ⟨f.toHom ≫ g.toHom, f.str ≫ g.str, fun x ↦ by abstract
+  comp f g := ⟨f.toHom ≫ g.toHom, f.str ≫ g.str, fun x ↦ by as_aux_lemma =>
     obtain ⟨y, hy⟩ := g.h_body (cast (by simp; rfl) x); obtain ⟨z, hz⟩ := f.h_body y
     use z
     simp only [FunctorToTypes.map_comp_apply, bodyFunctor, bodyPre, set_coe_cast] at hz hy

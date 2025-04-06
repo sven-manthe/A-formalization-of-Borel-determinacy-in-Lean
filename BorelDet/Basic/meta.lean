@@ -6,18 +6,6 @@ register_simp_attr simp_isPosition
 
 open Lean Meta Elab Tactic Term
 
-elab "abstract" tacs:ppDedent(tacticSeq) : tactic => do
-  if (← getGoals).length = 0 then return
-  if (← getGoals).length > 1 then do
-    throwError "more than one goal"
-  let target ← getMainTarget
-  let goal ← getMainGoal
-  let newGoal ← mkFreshExprMVar target
-  setGoals [newGoal.mvarId!]
-  Elab.Tactic.evalTactic tacs
-  setGoals [goal]
-  goal.assign (← mkAuxTheorem ((← getDeclName?).get! ++ `abstract ++ (← mkFreshId)) target newGoal)
-
 section simpAtStar
 --modify getNondepPropHyps
 def Lean.MVarId.getPropHyps (mvarId : MVarId) : MetaM (Array FVarId) := do

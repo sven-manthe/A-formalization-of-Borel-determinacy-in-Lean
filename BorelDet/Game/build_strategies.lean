@@ -2,7 +2,7 @@ import BorelDet.Game.games
 
 namespace GaleStewartGame
 open Classical
-open Stream'.Discrete Tree Descriptive Game PreStrategy
+open Stream'.Discrete Descriptive Tree Game PreStrategy
 
 variable {A : Type*} {T : tree A}
 namespace PreStrategy
@@ -179,9 +179,9 @@ variable (P : ∀ x : T, IsPosition x.val p.swap → Prop)
 /-- play such that the proposition `P x` holds in every position `x` resulting from your move -/
 def preserveProp : PreStrategy T p := fun x hp ↦ {a | P a.valT' (by synth_isPosition)}
 lemma preserveProp_eq_extQuasi (h : ∀ x hp, P x hp → ∀ a : ExtensionsAt x,
-  (preserveProp P a.valT' (by abstract synth_isPosition)).Nonempty) (hT : IsPruned T)
-  (hst0 : (hp : p = Player.zero) → ∃ a ha, P ⟨[a], ha⟩ (by abstract synth_isPosition))
-  (hst1 : (hp : p = Player.one) → (hn : [] ∈ T) → P ⟨[], hn⟩ (by abstract synth_isPosition)) :
+  (preserveProp P a.valT' (by as_aux_lemma => synth_isPosition)).Nonempty) (hT : IsPruned T)
+  (hst0 : (hp : p = Player.zero) → ∃ a ha, P ⟨[a], ha⟩ (by as_aux_lemma => synth_isPosition))
+  (hst1 : (hp : p = Player.one) → (hn : [] ∈ T) → P ⟨[], hn⟩ (by as_aux_lemma => synth_isPosition)) :
   ((preserveProp P).extQuasi hT).1.subtree = (preserveProp P).subtree := by
   apply PreStrategy.eq_extQuasi; intro ⟨x, hx⟩ hp
   rcases x.eq_nil_or_concat' with rfl | ⟨x, a, rfl⟩

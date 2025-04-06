@@ -1,7 +1,7 @@
 import BorelDet.Tree.len_tree_hom
 
-namespace GaleStewartGame.Tree
-open CategoryTheory Descriptive
+namespace Descriptive.Tree
+open CategoryTheory
 
 noncomputable section
 variable {S T U : Trees} {k m n : ℕ}
@@ -10,7 +10,7 @@ variable {S T U : Trees} {k m n : ℕ}
 @[simps! obj_fst] def res (k : ℕ) : Trees ⥤ Trees where
   obj S := @id Trees ⟨S.1, {
     val := {x | x ∈ S.2 ∧ x.length ≤ k}
-    property := by abstract
+    property := by as_aux_lemma =>
       intro x a ⟨h1, h2⟩; use mem_of_append h1
       simp_rw [List.length_append, List.length_singleton] at h2; omega }⟩
   map f := {
@@ -127,7 +127,7 @@ instance fixingEq_of_fixing {f : S ⟶ T} [h : Fixing k f] : FixingEq k f :=
   (fixing_iff_fixingEq k f).mp h k le_rfl
 
 variable {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
-lemma Fixing.inj (x y : S) (ht : Fixing x.val.length f := by abstract synth_fixing)
+lemma Fixing.inj (x y : S) (ht : Fixing x.val.length f := by as_aux_lemma => synth_fixing)
   (he : f x = f y) : x = y := by
   have hl : x.val.length = y.val.length := by
     apply_fun (List.length ∘ Subtype.val) at he; simpa using he
@@ -135,7 +135,7 @@ lemma Fixing.inj (x y : S) (ht : Fixing x.val.length f := by abstract synth_fixi
     = (res x.val.length).map f ⟨y.val, by simp [hl, res]⟩ := by
     ext1; apply_fun Subtype.val at he; exact he
   ext1; replace he' := ht.bijective.1 he'; apply_fun Subtype.val at he'; exact he'
-def pInv (y : T) (h : Fixing y.val.length f := by abstract synth_fixing) : S :=
+def pInv (y : T) (h : Fixing y.val.length f := by as_aux_lemma => synth_fixing) : S :=
   let x := inv ((res y.val.length).map f) ⟨y.val, by simp [res]⟩; res.val' x
 @[simp, simp_lengths] lemma h_length_pInv (y : T) (h : Fixing y.val.length f) :
   (pInv f y h).val.length (α := no_index _) = y.val.length (α := no_index _) :=
@@ -150,8 +150,8 @@ def pInv (y : T) (h : Fixing y.val.length f := by abstract synth_fixing) : S :=
   ext1; show ((res y.val.length).map f (inv ((res y.val.length).map f) _)).val = _
   rw [cancel_inv_right]
 @[simp] lemma pInv_id (x : S) : pInv (𝟙 S) x = x := by simp [pInv]
-@[simp] lemma pInv_comp y (hg : Fixing y.val.length g := by abstract synth_fixing)
-  (hf : Fixing y.val.length f := by abstract synth_fixing) :
+@[simp] lemma pInv_comp y (hg : Fixing y.val.length g := by as_aux_lemma => synth_fixing)
+  (hf : Fixing y.val.length f := by as_aux_lemma => synth_fixing) :
   pInv (f ≫ g) y = pInv f (pInv g y hg) := by
   apply Fixing.inj f _; apply Fixing.inj g _
   show (f ≫ g) _ = _; simp_rw [cancel_pInv_right]
@@ -163,17 +163,17 @@ lemma take_apply_pInv x (h : Fixing x.val.length f) :
 lemma take_apply_pInv_val x (h : Fixing x.val.length f) :
   (pInv f (take n x)).val = (pInv f x h).val.take n :=
   congr_arg Subtype.val (take_apply_pInv f x h)
-@[simp] lemma inv_val'_eq_pInv x (h : Fixing k f := by abstract synth_fixing) :
+@[simp] lemma inv_val'_eq_pInv x (h : Fixing k f := by as_aux_lemma => synth_fixing) :
   res.val' (inv ((res k).map f) x) = pInv f (res.val' x) := by
   apply Fixing.inj f _; ext1; show ((res k).map f _).val = _; simp
-@[simp] lemma inv_val'_eq_pInv' x (h : Fixing k f := by abstract synth_fixing) :
+@[simp] lemma inv_val'_eq_pInv' x (h : Fixing k f := by as_aux_lemma => synth_fixing) :
   resEq.val' (inv ((resEq k).map f) x) = pInv f (resEq.val' x) := by
   apply Fixing.inj f _; ext1; show ((resEq k).map f _).val = _; simp
-@[simp] lemma inv_val_eq_pInv_val x (h : Fixing k f := by abstract synth_fixing) :
+@[simp] lemma inv_val_eq_pInv_val x (h : Fixing k f := by as_aux_lemma => synth_fixing) :
   (inv ((res k).map f) x).val = (pInv f (res.val' x)).val :=
   congr_arg Subtype.val (inv_val'_eq_pInv f x)
-@[simp] lemma inv_val_eq_pInv_val' x (h : Fixing k f := by abstract synth_fixing) :
+@[simp] lemma inv_val_eq_pInv_val' x (h : Fixing k f := by as_aux_lemma => synth_fixing) :
   (inv ((resEq k).map f) x).val = (pInv f (resEq.val' x)).val :=
   congr_arg Subtype.val (inv_val'_eq_pInv' f x)
 end
-end GaleStewartGame.Tree
+end Descriptive.Tree

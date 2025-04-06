@@ -1,9 +1,9 @@
 import BorelDet.Tree.tree_body
 import BorelDet.Tree.len_tree_hom
 
-namespace GaleStewartGame.Tree
+namespace Descriptive.Tree
 open CategoryTheory
-open Stream'.Discrete Descriptive
+open Stream'.Discrete
 
 variable {A A' : Type*} {n : ℕ}
 
@@ -117,4 +117,4 @@ lemma LenHom.bodyMap_continuous {S T : Trees} (f : S ⟶ T) :
   convert Tree.bodyMap_continuous f.toOrderHom <;> simp only [bodyDom_univ]
 
 end
-end GaleStewartGame.Tree
+end Descriptive.Tree

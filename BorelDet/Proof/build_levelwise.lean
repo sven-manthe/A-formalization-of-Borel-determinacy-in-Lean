@@ -2,9 +2,9 @@ import BorelDet.Tree.tree_extensions
 import BorelDet.Tree.body_functor
 import BorelDet.Game.strategies
 
-namespace GaleStewartGame.Tree
-open Classical CategoryTheory
-open Stream'.Discrete Descriptive
+namespace GaleStewartGame
+open Classical CategoryTheory Descriptive Tree
+open Stream'.Discrete
 
 noncomputable section
 variable {k m n : ℕ} {S T : Trees} {p : Player}
@@ -23,7 +23,7 @@ variable {k m n : ℕ} {S T : Trees} {p : Player}
 @[simp] lemma bodySystem_take_val (x : BodySystemObj T) :
   (x.res k).val.take m = (x.res (k ⊓ m)).val := by
   rw [List.prefix_iff_eq_take.mp ((bodySystem_con' x).mpr (by simp : k ⊓ m ≤ k))]
-  simp only [resEq_len, List.take_eq_take, inf_le_left, min_eq_left, inf_comm]
+  simp only [resEq_len, List.take_eq_take_iff, inf_le_left, min_eq_left, inf_comm]
 @[simp] lemma bodySystem_take (x : BodySystemObj T) :
   Tree.take m (resEq.val' (x.res k)) = resEq.val' (x.res (k ⊓ m)) := by
   ext; simp_rw [take_coe, resEq.val'_coe, bodySystem_take_val]
@@ -76,10 +76,10 @@ lemma bodySystem_contains_iff' (x : BodySystemObj T) {z} (y : ExtensionsAt z) :
   x.contains y.val' ↔ x.containsTree y.valT' := bodySystem_contains_iff x y.valT'
 
 @[congr] --simp needs this
-lemma res_val_congr (x y : Tree.BodySystemObj T) (h : x = y)
+lemma res_val_congr (x y : BodySystemObj T) (h : x = y)
   (h' : m = n) : (x.res m).val = (y.res n).val := by congr!
 @[congr] --how can this help if it is proven with congr?
-lemma res_val'_congr (x y : Tree.BodySystemObj T) (h : x = y)
+lemma res_val'_congr (x y : BodySystemObj T) (h : x = y)
   (h' : m = n) : resEq.val' (x.res m) = resEq.val' (y.res n) := by congr
 lemma containsTree.map {x : BodySystemObj S} {y}
   (h : x.containsTree y) (f : S ⟶ T) : (bodySystem.map f x).containsTree (f y) := by
@@ -121,7 +121,7 @@ def res (h : m ≤ k) (S : ResStrategy T p k) : ResStrategy T p m :=
 @[simp] lemma res_trans (m n k) (S : ResStrategy T p k) (mn : m ≤ n) (nk : n ≤ k) :
   (S.res nk).res mn = S.res (mn.trans nk) := rfl
 
-def fromMap (f : S ⟶ T) (h : Tree.Fixing k f := by abstract synth_fixing)
+def fromMap (f : S ⟶ T) (h : Tree.Fixing k f := by as_aux_lemma => synth_fixing)
   (S' : ResStrategy S p k) : ResStrategy T p k := fun x hx hl ↦
     ExtensionsAt.map f (x := pInv f x) (y := x) (by simp_rw [cancel_pInv_right])
       (S' _ (by simpa only [iff_pInv_lenHom]) (by simpa only [h_length_pInv]))
@@ -130,11 +130,11 @@ lemma fromMap_congr {f g : S ⟶ T}
   (heq : f = g) (hh : Tree.Fixing k f) :
   ResStrategy.fromMap f hh = ResStrategy.fromMap (p := p) (f := g) (h := by subst heq; exact hh) := by
   congr! --could be generated automatically, propositional extensionality
-def fromMapInv (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by abstract synth_fixing)
+def fromMapInv (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by as_aux_lemma => synth_fixing)
   (S' : ResStrategy T p k) : ResStrategy S p k := fun y hy hl ↦
     (@Tree.extensionsEquiv _ _ f y (h.mon (by simpa))).symm
     (S' _ (by synth_isPosition) (by simpa only [LenHom.h_length_simp]))
-def fromMapEquiv p k (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by abstract synth_fixing) :
+def fromMapEquiv p k (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by as_aux_lemma => synth_fixing) :
   ResStrategy S p k ≃ ResStrategy T p k where
   toFun := fromMap f
   invFun := fromMapInv f
@@ -152,11 +152,11 @@ def fromMapEquiv p k (f : S ⟶ T) (h : Tree.Fixing (k + 1) f := by abstract syn
   ext1; apply ExtensionsAt.ext_valT'; simp [fromMap]
 
 @[simp] lemma fromMap_comp k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U)
-  (hf : Tree.Fixing k f := by abstract synth_fixing) (hg : Tree.Fixing k g := by abstract synth_fixing)
+  (hf : Tree.Fixing k f := by as_aux_lemma => synth_fixing) (hg : Tree.Fixing k g := by as_aux_lemma => synth_fixing)
   (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := by
   ext1 x _ hl; apply ExtensionsAt.ext_valT'
-  simp_rw [fromMap, ExtensionsAt.map_valT', comp_apply, ← pInv_comp']
+  simp_rw [fromMap, ExtensionsAt.map_valT', CategoryTheory.comp_apply, ← pInv_comp']
 lemma fromMap_comp' k {S T U : Trees} (f : S ⟶ T) (g : T ⟶ U) --regression need
   (hf : Tree.Fixing k f) (hg : Tree.Fixing k g) (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := fromMap_comp k f g hf hg S'
@@ -231,4 +231,4 @@ lemma bodyEquivSystem_strat'' {x} (S : Strategy T.2 p) :
   ↔ consistent (bodyEquivSystem.hom.app T x) (strategyEquivSystem S) := by
   simp [← bodyEquivSystem_strat]
 end
-end GaleStewartGame.Tree
+end GaleStewartGame

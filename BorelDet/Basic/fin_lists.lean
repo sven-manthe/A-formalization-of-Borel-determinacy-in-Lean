@@ -18,8 +18,8 @@ example (x : List α) {n m} (h : n = m) : x.get n = x.get m := by simp [h]-/
 lemma eq_take_concat (x : List α) n (h : x.length = n + 1) :
   x = x.take n ++ [x[n]] := by
   rw [take_concat_get', ← h, take_length]
-lemma head_eq_get (x : List α) h : x.head h = x[0]'(List.length_pos.mpr h) :=
-  (getElem_zero (List.length_pos.mpr h)).symm
+lemma head_eq_get (x : List α) h : x.head h = x[0]'(List.length_pos_iff.mpr h) :=
+  (getElem_zero (List.length_pos_iff.mpr h)).symm
 lemma tail_eq_drop : ∀ x : List α, x.tail = x.drop 1
   | [] => by simp
   | _ :: _ => by simp
@@ -28,7 +28,7 @@ lemma tail_take : (x.take (n + 1)).tail = x.tail.take n := by
 lemma head_tail_take (x : List α) h : x.head h :: x.tail.take n = x.take (n + 1) := by
   cases x <;> simp at h ⊢
 lemma tail_getElem (x : List α) n (h : n < x.tail.length) :
-  x.tail[n] = x[n + 1]'(by abstract simp at h; omega) := by
+  x.tail[n] = x[n + 1]'(by as_aux_lemma => simp at h; omega) := by
   simp_rw [tail_eq_drop, getElem_drop, add_comm]
 lemma zipWith_left : ∀ (x : List α) (z : List β), List.zipWith (fun a _ ↦ a) x z = x.take z.length
   | [], _ => by simp

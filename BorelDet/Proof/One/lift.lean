@@ -155,7 +155,7 @@ lemma u_nil : H.u.val ≠ [] := H.u.prop.choose_spec.2.1.1
   pullSub (subAt T (H.x.val.take (2 * k + 1) ++ H.u.val)) H.u.val.tail :=
   H.u.prop.choose_spec.2.2
 @[simps! toPreLift liftTree] def toLift := H.extend H.S
-lemma u_zero : H.u.val[0]'(by simpa [List.length_pos] using H.u_nil)
+lemma u_zero : H.u.val[0]'(by simpa [List.length_pos_iff] using H.u_nil)
   = H.toLift.liftShort.val[2 * k + 1].1 := H.u.prop.choose_spec.2.1.2
 @[simps! toLift] def toLift' : Lift' hyp where
   toLift := H.toLift
@@ -254,7 +254,7 @@ def extension : ExtensionsAt H.x where
   val := (h.a hp).val
   property := by
     have h' := (h.a hp).prop; simp [game] at h' ⊢
-    simp_rw [← List.drop_drop _ (2 * k + 1), ← List.append_assoc _ _ [_],
+    simp_rw [← List.drop_drop (j := 2 * k + 1), ← List.append_assoc _ _ [_],
       List.take_append_drop] at h'; exact h'
 end Winnable
 

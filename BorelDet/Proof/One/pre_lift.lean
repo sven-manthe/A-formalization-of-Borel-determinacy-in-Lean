@@ -31,7 +31,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn
-  = H.take (min m n) (by abstract omega) := by
+  = H.take (min m n) (by as_aux_lemma => omega) := by
   ext1 <;> simp [min_comm]
 
 @[simps] instance : LE (PreLift hyp) where
@@ -105,7 +105,7 @@ lemma liftVal_very_short (h : H.x.val.length = 2 * k + 1) : H.liftVal = H.liftVe
       List.zipInitsMap_take, List.take_take, h, ← this]
 -- for u drop (2 * k + 1)
 def PreWonPos (u : List A) := LosingCondition H.liftShort.val (by simp) ∧
-  (∃ (h : u ≠ []), u[0]'(by simpa [List.length_pos]) = H.liftShort.val[2 * k + 1].1) ∧
+  (∃ (h : u ≠ []), u[0]'(by simpa [List.length_pos_iff]) = H.liftShort.val[2 * k + 1].1) ∧
   getTree H.liftShort.val = pullSub (subAt T (H.x.val.take (2 * k + 1) ++ u)) u.tail
 
 @[simps toPreLift liftTree] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : Lift hyp where

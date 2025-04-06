@@ -5,8 +5,7 @@ import BorelDet.Basic.misc_cat
 
 open CategoryTheory
 
-namespace GaleStewartGame.Tree
-open Descriptive
+namespace Descriptive.Tree
 noncomputable section
 
 /-- The objects of the category of trees -/
@@ -25,10 +24,10 @@ instance : Category Trees where
   id S := ⟨OrderHom.id, fun _ ↦ rfl⟩
   comp f g := ⟨g.toOrderHom.comp f.toOrderHom, fun h ↦ by erw [g.h_length, f.h_length]⟩
 def forget_PO : Trees ⥤ PartOrd where
-  obj T := { α := T.2 }
-  map f := f.toOrderHom
+  obj T := { carrier := T.2 }
+  map f := PartOrd.ofHom f.toOrderHom
 instance : forget_PO.Faithful where
-  map_injective {_ _} _ _ h := LenHom.ext (congr_arg OrderHom.toFun h)
+  map_injective {_ _} _ _ h := LenHom.ext (congr_arg (OrderHom.toFun ∘ PartOrd.Hom.hom) h)
 instance : HasForget Trees where
   forget := Functor.comp Tree.forget_PO (forget PartOrd)
 instance : OrderHomClass (S ⟶ T) S.2 T.2 where
@@ -63,7 +62,7 @@ lemma inv_toFun {S T : Trees} (f : S ⟶ T) [IsIso f] :
   apply List.eq_nil_of_length_eq_zero; simp
 lemma map_ne_nil (f : S ⟶ T) {x : S} (h : x.val ≠ []) : (f x).val ≠ [] := by
   intro h'; apply_fun List.length at h'
-  exact h <| List.length_eq_zero.mp <| by simpa using h'
+  exact h <| List.length_eq_zero_iff.mp <| by simpa using h'
 
 lemma mk_eval (S T : Trees) (f : S → T) hf1 hf2 (x : S) :
   DFunLike.coe (F := S ⟶ T) (no_index ⟨⟨f, hf1⟩, hf2⟩) x = f x := rfl
@@ -99,4 +98,4 @@ instance : (forget Trees).ReflectsIsomorphisms where
 
 end
 
-end GaleStewartGame.Tree
+end Descriptive.Tree

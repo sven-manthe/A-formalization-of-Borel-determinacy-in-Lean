@@ -91,7 +91,7 @@ lemma extension_conLong hp R : (hW.toWLift'.extensionLift hp R).ConLong := by
     rw [ExtensionsAt.val'_take_of_le _ (by simp)] at hm'; simp [toWLift] at hm'
     simpa [liftNode, WLLift'.extensionMap, ExtensionsAt.map_val' π] using hm'.1
   simp [PreLift.ConLong]; convert hm using 1
-  rw [← List.getElem_cons_drop _ _ (by simp [Nat.lt_iff_add_one_le])]; congr 1
+  rw [← List.getElem_cons_drop (by simp [Nat.lt_iff_add_one_le])]; congr 1
   rw [List.getElem_take' (j := 2 * k + 2), H.x.val.getElem_take' (j := 2 * k + 2)] <;> simp
 end Winnable
 
@@ -210,23 +210,23 @@ lemma lift_mem n : hL.1.mk.toWLLift.liftMediumVal ++
     by_cases hn : 2 * k + 2 + n ≥ H.x.val.length
     · erw [List.getElem?_eq_none_iff.mpr hn]
       simpa only [Option.toList_none, List.zipInitsMap_nil, List.append_nil] using ih
-    · rw [List.getElem?_eq_getElem (by abstract omega)]; simp [← List.append_assoc]
+    · rw [List.getElem?_eq_getElem (by as_aux_lemma => omega)]; simp [← List.append_assoc]
       use ih; rw [getTree_eq' _ ih]
       refine ⟨?_, by simp [← List.zipInitsMap_map]⟩
       rw [List.take_left' (WLLift.liftMediumVal_length _)]
       simp only [LLift.toWLLift, LLift.takeMin_x_coe,
         WLLift.getTree_liftMediumVal, WLLift.liftMediumVal_length, List.drop_left', mem_subAt]
       by_cases hn : 2 * k + 2 + n + 1 ≤ hL.1.mk.minLength
-      · rw [mem_pullSub_short (by abstract simp; omega)]; constructor
+      · rw [mem_pullSub_short (by as_aux_lemma => simp; omega)]; constructor
         · simp [← List.zipInitsMap_map]; rw [List.getElem_drop', List.take_concat_get']
           simp [List.drop_take]; omega
         · simpa only [mem_subAt, List.append_nil, LLift.takeMin_x_coe] using hL.1.mk.takeMin.x.prop
-      · rw [mem_pullSub_long (by abstract simp; omega)]
+      · rw [mem_pullSub_long (by as_aux_lemma => simp; omega)]
         use ((H.x.val.drop (2 * k + 2)).drop (hL.1.mk.minLength - (2 * k + 2))).take
           (2 * k + n + 3 - hL.1.mk.minLength), by
           apply take_mem ⟨_, _⟩; simp
         conv => lhs; simp [← List.zipInitsMap_map]; rw [List.getElem_drop', List.take_concat_get']
-        erw [List.drop_take, ← List.take_add, List.take_eq_take, List.length_drop]
+        erw [List.drop_take, ← List.take_add, List.take_eq_take_iff, List.length_drop]
         have := hL.1.mk.le_minLength; omega
 @[simps toWLLift] def toLLift' : WLLift' hyp where
   toWLLift := hL.1.mk.toWLLift
@@ -244,7 +244,7 @@ lemma losable_of_le {H H' : Lift hyp} (h : H.Losable) (h' : H ≤ H') (hc : H'.C
   H'.Losable := by
   simp_rw (config := {singlePass := true}) [← Lift.eq_take_of_le h'] at h; exact h.extend hc
 lemma take (hn : 1 ≤ h.2.num + n) :
-  (H.take (2 * k + 1 + h.2.num + n) (by abstract omega)).Losable := by
+  (H.take (2 * k + 1 + h.2.num + n) (by as_aux_lemma => omega)).Losable := by
   use H.conLong_take (h := by omega) h.1
   replace h := h.2; simp [List.drop_take] at h ⊢
   apply WinningPrefix.of_take (n := h.num)

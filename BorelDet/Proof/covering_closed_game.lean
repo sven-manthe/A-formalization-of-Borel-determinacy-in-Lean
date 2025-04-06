@@ -205,7 +205,8 @@ def treeHomRes : (Tree.res (2 * k)).obj ⟨_, T'⟩ ≅ (Tree.res (2 * k)).obj �
   hom_inv_id := by
     ext1 ⟨x, h⟩; ext1
     --erw needed since defining T' as Tree instead of Trees
-    simp_rw [comp_apply, pInvTreeHom_val, res_val]; erw [treeHom_val]; simp_rw [id_apply]
+    simp_rw [CategoryTheory.comp_apply, pInvTreeHom_val, res_val]
+    erw [treeHom_val]; simp_rw [CategoryTheory.id_apply]
     induction' x using List.reverseRecOn with x a ih
     · simp
     · simp_rw [res.val'_coe] at *

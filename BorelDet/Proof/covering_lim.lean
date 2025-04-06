@@ -36,7 +36,7 @@ open ResStrategy
   (S' : ResStrategy S p k) :
   (fromMap (f ≫ g)) S' = (fromMap g hg) ((fromMap f hf) S') := by
   ext1 x _ hl; apply ExtensionsAt.ext_valT'
-  simp_rw [fromMap, ExtensionsAt.map_valT', comp_apply, ← pInv_comp']
+  simp_rw [fromMap, ExtensionsAt.map_valT', CategoryTheory.comp_apply, ← pInv_comp']
 def limCone_str n : PTreesS.mk (limConePt hF) ⟶ PTreesS.mk (F.obj (Opposite.op n)) where
   toFun := fun p m S ↦
     (F.map (homOfLE (by simp)).op).str.toFun p m
@@ -62,15 +62,15 @@ lemma limCone_str_nat {n m : ℕ} (h : n ≤ m) :
   simp_rw [limCone_π_map_nat]
 
 lemma cast_limCone_str {m m' : ℕ} (h : m' = m)
-  (hi : Tree.Fixing k (limCone_π_map hF m) := by abstract synth_fixing) {S} :
+  (hi : Tree.Fixing k (limCone_π_map hF m) := by as_aux_lemma => synth_fixing) {S} :
   ((F.map (homOfLE h.le).op).str.toFun p k) ((ResStrategy.fromMap (limCone_π_map hF m)) S)
     = ResStrategy.fromMap (f := limCone_π_map hF m') (h := by subst h; exact hi) S
     := by subst h; simp
 
 lemma limCone_str_large S n x hx hl (h : k ≤ n) :
   (((limCone_str hF n).toFun p k S) (limCone_π_map hF n x)
-    (by abstract synth_isPosition) (by simpa only [LenHom.h_length_simp])).valT'
-  --no abstract causes problems after proof, so misunderstood def
+    (by as_aux_lemma => synth_isPosition) (by simpa only [LenHom.h_length_simp])).valT'
+  --no as_aux_lemma => causes problems after proof, so misunderstood def
   = limCone_π_map hF n (S x hx hl).valT' := by
   rw [limCone_str, cast_limCone_str hF (by simp [h]), ResStrategy.fromMap_valT']
 
@@ -220,7 +220,7 @@ lemma limCone_body_is_lift_fin (S : (LvlStratHom.system p).obj ⟨limConePt hF�
   · have h : F.map (homOfLE (by simp)).op
       = map_ineq_rec n k ≫ F.map (homOfLE (by simp : n ⊔ 0 ≤ n ⊔ k)).op := by
       rw [map_ineq_rec, ← Functor.map_comp]; congr
-    rwa [h, comp_covering_toHom, comp_apply, limCone_body_is_lift']
+    rwa [h, comp_covering_toHom, CategoryTheory.comp_apply, limCone_body_is_lift']
 
 lemma limCone_body_system_lift (S : (LvlStratHom.system p).obj ⟨limConePt hF⟩)
   (y : bodySystem.obj (F.obj (Opposite.op n)).1)

@@ -1,13 +1,13 @@
 import BorelDet.Tree.tree_lim
 import BorelDet.Tree.pointed_trees
 
-namespace GaleStewartGame.Tree
+namespace Descriptive.Tree
 open Classical CategoryTheory Descriptive
 
 noncomputable section
 variable {k m n : ℕ}
 abbrev mkPointedMor' {S T : Trees} (f : S ⟶ T) (y : T)
-  (h : Fixing y.val.length f := by abstract synth_fixing) :
+  (h : Fixing y.val.length f := by all_goals as_aux_lemma => synth_fixing) : --TODO as_aux_lemma fails on zero goals
   mkPointed (Tree.pInv f y) ⟶ mkPointed y := ⟨f, by simp⟩
 
 abbrev pointedResObj (k : ℕ) (T : PointedTrees) : PointedTrees where
@@ -53,13 +53,13 @@ def extensionsRes T :
 
 variable {S T : Trees} (f : S ⟶ T) (x : S) (y : T)
 /-- if f is (|x|+1)-fixing, then it induces a bijection on extensions of x -/
-def pointedRes_iso (hx : Fixing (x.val.length + 1) f := by abstract synth_fixing) :
+def pointedRes_iso (hx : Fixing (x.val.length + 1) f := by as_aux_lemma => synth_fixing) :
   (pointedRes (x.val.length + 1)).obj (mkPointed x)
   ≅ (pointedRes (x.val.length + 1)).obj (mkPointed (f x)) :=
   have _: IsIso ((pointedRes (x.val.length + 1)).map (mkPointedMor f x)) :=
     (pointedRes_isIso_iff_fixing _ _).mpr hx
   asIso ((pointedRes (x.val.length + 1)).map (mkPointedMor f x))
-def extensionsEquiv (hx : Fixing (x.val.length + 1) f := by abstract synth_fixing) :
+def extensionsEquiv (hx : Fixing (x.val.length + 1) f := by as_aux_lemma => synth_fixing) :
   ExtensionsAt x ≃ ExtensionsAt (f x) :=
   (extensionsRes (mkPointed x)).trans (
   (Iso.toEquiv (extensions.mapIso (pointedRes_iso f x))).trans (
@@ -76,13 +76,13 @@ def extensionsEquiv (hx : Fixing (x.val.length + 1) f := by abstract synth_fixin
   ((extensionsEquiv f x hx).symm a).valT' = pInv f a.valT' := by
   obtain ⟨a, rfl⟩ := (extensionsEquiv f x).surjective a
   simp only [Equiv.symm_apply_apply, extensionsEquiv_val', Subtype.coe_eta, cancel_pInv_left]
-def pointedRes_iso' (hy : Fixing (y.val.length + 1) f := by abstract synth_fixing) :
+def pointedRes_iso' (hy : Fixing (y.val.length + 1) f := by as_aux_lemma => synth_fixing) :
   (pointedRes (y.val.length + 1)).obj (mkPointed y)
   ≅ (pointedRes (y.val.length + 1)).obj (mkPointed (pInv f y)) :=
   have _: IsIso ((pointedRes (y.val.length + 1)).map (mkPointedMor' f y)) :=
     (pointedRes_isIso_iff_fixing _ _).mpr hy
   (asIso ((pointedRes (y.val.length + 1)).map (mkPointedMor' f y))).symm
-def extensionsEquiv' (hy : Fixing (y.val.length + 1) f := by abstract synth_fixing) :
+def extensionsEquiv' (hy : Fixing (y.val.length + 1) f := by as_aux_lemma => synth_fixing) :
   ExtensionsAt y ≃ ExtensionsAt (pInv f y) :=
   have : Fixing y.val.length f := by synth_fixing
   (extensionsRes (mkPointed y)).trans (
@@ -126,4 +126,4 @@ lemma lim_ne (F : ℕᵒᵖ ⥤ Trees) (hF : ∀ n, Tree.Fixing n (F.map (homOfL
   (h : ∀ n, [] ∈ (F.obj (Opposite.op n)).2) : [] ∈ (limCone F).pt.2 :=
   ((zero_fixing _).mp ((proj_fixing F 0 (by simpa) 0).mon (by simp))).mpr (h 0)
 end
-end GaleStewartGame.Tree
+end Descriptive.Tree

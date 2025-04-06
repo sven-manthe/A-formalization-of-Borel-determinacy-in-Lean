@@ -1,6 +1,6 @@
 import BorelDet.Tree.len_tree_hom
 
-namespace GaleStewartGame.Tree
+namespace Descriptive.Tree
 open CategoryTheory Descriptive
 
 noncomputable section
@@ -63,7 +63,7 @@ lemma apply_concat :
   replace hbl := congr_arg List.length hlb
   simp only [LenHom.h_length_simp, List.length_append, List.length_singleton,
     add_right_inj] at hbl
-  obtain ⟨b, rfl⟩ := List.length_eq_one.mp hbl.symm; use b
+  obtain ⟨b, rfl⟩ := List.length_eq_one_iff.mp hbl.symm; use b
 def concat : T.1 := (apply_concat f hx).choose
 lemma concat_spec :
   (f ⟨_, hx⟩).val = (f ⟨x, mem_of_append hx⟩).val ++ [concat f hx] :=
@@ -90,7 +90,7 @@ def extensions : PointedTrees ⥤ Type* where
     apply concat_uniq; simp
   map_comp _ _ := by
     ext; simp_rw [PointedLenHom.comp_toLenHom, types_comp_apply]
-    apply concat_uniq; simp_rw [comp_apply, concat_spec']
+    apply concat_uniq; simp_rw [CategoryTheory.comp_apply, concat_spec']
     congr!; rw [← PointedLenHom.hp]; rfl
 
 def extensions.val' {T : PointedTrees} (a : extensions.obj T) : List T.1.1 :=
@@ -123,4 +123,4 @@ abbrev map ⦃x : S⦄ ⦃y : T⦄ (h : f x = y) (a : ExtensionsAt x) : Extensio
 end ExtensionsAt
 
 end
-end GaleStewartGame.Tree
+end Descriptive.Tree

@@ -1,87 +1,9 @@
 import Mathlib.SetTheory.Descriptive.Tree
 import BorelDet.Basic.fin_lists
 
-namespace GaleStewartGame
-open Descriptive
-@[simps!] instance (A : Type*) : SetLike (tree A) (List A) := SetLike.instSubtypeSet
-namespace Tree
+namespace Descriptive.Tree
+--TODO if continue commits, add newline between declarations before
 variable {A A' : Type*} (S T : tree A) (x y : List A)
-section
-attribute [local instance] SetLike.instSubtypeSet
-variable {X} {p : Set X → Prop} {x : X} {U : Set X} {h : p U}
-universe u in
-@[simp] lemma mem_mk' : x ∈ Subtype.mk U h ↔ x ∈ U := Iff.rfl
-end
-
-lemma take_mem {T : tree A} {n : ℕ} (x : T) : x.val.take n ∈ T :=
-  mem_of_prefix (x.val.take_prefix n) x.prop
-/-- A variant of `List.take` internally to a tree -/
-@[simps coe] def take {T : tree A} (n : ℕ) (x : T) : T := ⟨x.val.take n, take_mem x⟩
-@[simp] lemma take_take {T : tree A} (m n : ℕ) (x : T) :
-  take m (take n x) = take (m ⊓ n) x := by simp [Subtype.ext_iff, List.take_take]
-@[simp] lemma take_eq_take {x : T} {m n : ℕ} :
-  take m x = take n x ↔ m ⊓ x.val.length = n ⊓ x.val.length := by simp [Subtype.ext_iff]
-
-lemma singleton_mem (T : tree A) {a : A} {x : List A} (h : a :: x ∈ T) : [a] ∈ T :=
-  mem_of_prefix ⟨x, rfl⟩ h
-instance : Trans (List.IsPrefix) (fun x (T : tree A) ↦ x ∈ T) (fun x (T : tree A) ↦ x ∈ T)
-  where trans := mem_of_prefix
-
-/-- The residual tree obtained by regarding the node x as new root -/
-def subAt : tree A := ⟨(x ++ ·)⁻¹' T, fun _ _ _ ↦ mem_of_append (by rwa [List.append_assoc])⟩
-@[simp] lemma subAt_nil : subAt T [] = T := rfl
-@[simp] lemma subAt_append : subAt (subAt T x) y = subAt T (x ++ y) := by simp [subAt]
-@[gcongr] lemma subAt_mono {S T : tree A} (h : S ≤ T) :
-  subAt S x ≤ subAt T x := Set.preimage_mono h
-@[simp] lemma mem_subAt : y ∈ subAt T x ↔ x ++ y ∈ T := Iff.rfl
-@[simps coe] def drop {T : tree A} (n : ℕ) (x : T) : subAt T (Tree.take n x).val :=
-  ⟨x.val.drop n, by simp⟩
-
-/-- Adjoint of `subAt` -/
-def pullSub : tree A where
-  val := { y | y.take x.length <+: x ∧ y.drop x.length ∈ T }
-  property := fun y a ⟨h1, h2⟩ ↦
-    ⟨((y.prefix_append [a]).take x.length).trans h1,
-    mem_of_prefix ((y.prefix_append [a]).drop x.length) h2⟩
-lemma mem_pullSub_short {x y : List A} {T : tree A} (hl : y.length ≤ x.length) :
-  y ∈ pullSub T x ↔ y <+: x ∧ [] ∈ T := by
-  simp [pullSub, List.take_of_length_le hl, List.drop_eq_nil_iff.mpr hl]
-lemma mem_pullSub_long {x y : List A} {T : tree A} (hl : x.length ≤ y.length) :
-  y ∈ pullSub T x ↔ ∃ z ∈ T, y = x ++ z := by
-  constructor
-  · intro ⟨h1, h2⟩; use y.drop x.length, h2; nth_rw 1 [← List.take_append_drop x.length y]
-    simpa [- List.take_append_drop, List.prefix_iff_eq_take, hl] using h1
-  · rintro ⟨_, h, rfl⟩; simp [pullSub, h]
-@[simp] lemma mem_pullSub_append {T : tree A} (x y : List A) :
-  x ++ y ∈ pullSub T x ↔ y ∈ T := by rw [mem_pullSub_long] <;> simp
-@[simp] lemma mem_pullSub_self {T : tree A} (x : List A) :
-  x ∈ pullSub T x ↔ [] ∈ T := by simpa using mem_pullSub_append x []
-lemma pullSub_subAt (T : tree A) (x : List A) : pullSub (subAt T x) x ≤ T := by
-  intro y (h : y ∈ pullSub _ x); rcases le_or_gt y.length x.length with h' | h'
-  · rw [mem_pullSub_short h'] at h; simp at h; exact mem_of_prefix h.1 h.2
-  · rw [mem_pullSub_long h'.le] at h; obtain ⟨_, h, rfl⟩ := h; exact h
-@[simp] lemma subAt_pullSub (T : tree A) (x : List A) : subAt (pullSub T x) x = T := by
-  ext y; simp
-@[gcongr] lemma pullSub_mono {S T : tree A} (h : S ≤ T) x : pullSub S x ≤ pullSub T x :=
-  fun _ ⟨h1, h2⟩ ↦ ⟨h1, h h2⟩
-lemma pullSub_adjunction (S T : tree A) (x : List A) : pullSub S x ≤ T ↔ S ≤ subAt T x := by
-  constructor <;> intro h
-  · rw [← subAt_pullSub S x]; gcongr
-  · exact le_trans (by gcongr) (pullSub_subAt T x)
-@[simp] lemma pullSub_nil (S : tree A) : pullSub S [] = S := by
-  simp [pullSub]
-@[simp] lemma pullSub_append (S : tree A) (x y : List A) :
-  pullSub (pullSub S y) x = pullSub S (x ++ y) := by
-  ext z; rcases le_or_gt x.length z.length with hl | hl
-  · by_cases hp : x <+: z
-    · obtain ⟨z, rfl⟩ := hp; simp_rw [mem_pullSub_append]
-      simp [pullSub, List.take_add, List.prefix_append_right_inj]
-    · constructor <;> intro ⟨h, _⟩ <;>
-        [skip; replace h := by simpa [List.take_take] using h.take x.length] <;>
-        cases hp <| List.prefix_iff_eq_take.mpr (List.IsPrefix.eq_of_length h (by simpa)).symm
-  · rw [mem_pullSub_short (by omega), mem_pullSub_short (by simp),
-      mem_pullSub_short (by simp; omega)]
-    simpa using fun _ ↦ (z.isPrefix_append_of_length hl.le).symm
 
 /-- Set of children of node x as elements of T -/
 def ExtensionsAt {T : tree A} (x : T) := { a : A // x.val ++ [a] ∈ T }
@@ -97,7 +19,7 @@ lemma ext_val' {a b : ExtensionsAt x} (h : a.val' = b.val') : a = b := by
 lemma ext_valT' {a b : ExtensionsAt x} (h : a.valT' = b.valT') : a = b :=
   ext_val' <| congr_arg Subtype.val h
 @[simps] def drop {T : tree A} {n : ℕ} {x : T} :
-  ExtensionsAt x ≃ ExtensionsAt (Tree.drop n x) where
+  ExtensionsAt x ≃ ExtensionsAt (Tree.drop T n x) where --TODO fix T explicit
   toFun a := ⟨a.val, by simpa [← List.append_assoc] using a.prop⟩
   invFun a := ⟨a.val, by simpa [← List.append_assoc] using a.prop⟩
   left_inv _ := rfl
@@ -158,4 +80,4 @@ lemma apply_append {S : tree A} {T : tree A'} (f : OrderHom S T)
 
 attribute [simp_lengths] take_coe drop_coe ExtensionsAt.valT'_coe ExtensionsAt.val'_length
 end Tree
-end GaleStewartGame
+end Descriptive

@@ -61,8 +61,8 @@ lemma body_lost_of_losable n (h : (takeLift y n).Losable) (h' : ∀ m, ¬ (takeL
     generalize_proofs at this
     simp [Stream'.take_drop]
     generalize_proofs pf4 pf5
-    rw [pf4.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _) (by
-      abstract show _ = (takeLift y _).game; simp) rfl] at this
+    rw [pf4.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _) (by
+      as_aux_lemma => show _ = (takeLift y _).game; simp) rfl] at this
     convert this using 3
     · symm; apply WinningPrefix.prefix_num _
         (((Stream'.take_prefix _ _ _).mpr (by synth_isPosition)).drop _)

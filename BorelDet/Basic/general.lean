@@ -19,8 +19,6 @@ lemma Set.hEq_of_image_eq {α} {A A' : Set α} (h : A = A') {B : Set A} {B' : Se
   (h' : Subtype.val '' B = Subtype.val '' B') : HEq B B' := by
   subst h; rw [← Set.preimage_image_eq B Subtype.val_injective,
     ← Set.preimage_image_eq B' Subtype.val_injective, h']
-lemma Set.compl_diff (a b : Set α) : (a \ b)ᶜ = b ∪ aᶜ := by
-  ext; simp [himp]; tauto
 --cf. exists_exists_eq_and
 lemma exists_exists_and_eq {f : α → β} {p : β → Prop} :
     (∃ b, p b ∧ (∃ a, b = f a)) ↔ ∃ a, p (f a) := by aesop

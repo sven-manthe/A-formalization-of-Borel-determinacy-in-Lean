@@ -25,4 +25,5 @@ open TopologicalSpace
   subset_antisymm (interior_mono (isClosed_closure.closure_interior_subset))
     isOpen_interior.subset_interior_closure
 lemma IsClosed.interior_isRegular (hA : IsClosed A) : Heyting.IsRegular (Opens.interior A) := by
-  rw [Opens.isRegular_iff, ← hA.closure_eq]; simp
+  rw [Opens.isRegular_iff, ← hA.closure_eq, Opens.coe_interior,
+    interior_closure_interior_closure_eq_interior_closure]

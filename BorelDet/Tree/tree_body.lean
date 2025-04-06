@@ -1,9 +1,9 @@
 import BorelDet.Basic.inf_lists
 import BorelDet.Tree.trees
 
-namespace GaleStewartGame.Tree
+namespace Descriptive.Tree
 open CategoryTheory
-open Descriptive Stream'.Discrete
+open Stream'.Discrete
 
 variable {A : Type*} (S T : tree A)
 
@@ -104,7 +104,7 @@ lemma IsPruned.body_ne_iff_ne {T : tree A} (h : IsPruned T) :
     use a; intro x h'; suffices x = (f x.length).val by rw [this]; exact (f x.length).prop
     induction' x using List.reverseRecOn with x b ih
     · dsimp [f]
-    · specialize ih (principalOpen_sub _ _ h'); rw [List.length_append, List.length_eq_one.mpr ⟨b, rfl⟩]
+    · specialize ih (principalOpen_sub _ _ h'); rw [List.length_append, List.length_eq_one_iff.mpr ⟨b, rfl⟩]
       obtain ⟨z, h'⟩ := h'; apply_fun (fun y ↦ y.get x.length) at h'; simp at h'
       simp_rw [h', a]; congr!; simp [Stream'.get, f]
 lemma isPruned_iff_principalOpen_ne {T : tree A} :
@@ -116,4 +116,4 @@ lemma isPruned_iff_principalOpen_ne {T : tree A} :
     rw [principalOpen_iff_restrict] at hx; nth_rw 1 [hx, ← Stream'.take_succ']
     exact hT _ (extend_sub _ y)
 
-end GaleStewartGame.Tree
+end Descriptive.Tree

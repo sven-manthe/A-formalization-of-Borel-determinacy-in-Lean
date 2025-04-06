@@ -49,7 +49,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn
-  = H.take (min m n) (by abstract omega) := by
+  = H.take (min m n) (by as_aux_lemma => omega) := by
   ext1 <;> simp [min_comm]
 @[simp] lemma liftShort_take h : (H.take n h).liftShort = H.liftShort := by
   ext1; simp [liftShort, (by omega : 2 * k ≤ n)]

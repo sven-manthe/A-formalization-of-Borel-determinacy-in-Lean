@@ -49,7 +49,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by e
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn
-  = H.take (min m n) (by abstract omega) := by ext1 <;> simp [min_comm]
+  = H.take (min m n) (by as_aux_lemma => omega) := by ext1 <;> simp [min_comm]
 @[simp] lemma preLift_take hk : (H.take n hk).preLift = H.preLift.take n hk := by ext <;> simp
 def extension hp := H.preLift.extension hp ((strategyEquivSystem H.R).str _)
 @[congr] lemma extension_val_congr {H H' : TreeLift hyp} (h : H = H') {hp} :
@@ -64,16 +64,16 @@ lemma stratMap'_extend : stratMap' H.R (subtree_incl _ H.x) = H.extension := by
   (H.dropLast h).x = Tree.take (H.x.val.length - 1) H.x := rfl
 
 lemma x_mem_tree h (hp : IsPosition H.x.val Player.zero) :
-  H.x.val[H.x.val.length - 1]'(by abstract have := H.hlvl; omega)
-  = ((H.dropLast h).extension (by abstract synth_isPosition)).val := by
+  H.x.val[H.x.val.length - 1]'(by as_aux_lemma => have := H.hlvl; omega)
+  = ((H.dropLast h).extension (by as_aux_lemma => synth_isPosition)).val := by
   have hx := H.x.prop
   simp_rw (config := {singlePass := true})
-    [H.x.val.eq_take_concat (H.x.val.length - 1) (by abstract have := H.hlvl; omega)] at hx
-  replace hx := subtree_compatible _ (Tree.take _ H.x) (by abstract synth_isPosition) hx
+    [H.x.val.eq_take_concat (H.x.val.length - 1) (by as_aux_lemma => have := H.hlvl; omega)] at hx
+  replace hx := subtree_compatible _ (Tree.take _ H.x) (by as_aux_lemma => synth_isPosition) hx
   simp at hx; change _ = stratMap' (H.dropLast h).R ⟨(H.dropLast h).x.val, _⟩ _ at hx
   erw [stratMap'_extend] at hx; apply_fun Subtype.val at hx; exact hx
 lemma x_mem_tree' h (hp : IsPosition H.x.val Player.zero) :
-  H.preLift.x = ((H.dropLast h).extension (by abstract synth_isPosition)).valT' := by
+  H.preLift.x = ((H.dropLast h).extension (by as_aux_lemma => synth_isPosition)).valT' := by
   ext1; simp [ExtensionsAt.val']; rw [← H.x_mem_tree h hp, ← List.eq_take_concat]; omega
 
 lemma losable_or_winnable :
@@ -83,7 +83,7 @@ lemma losable_or_winnable :
   · suffices H.preLift.Losable ∨ H.preLift.Winnable ∨ H.preLift.Won by --TODO how can this be more powerful than the plain have for subsequent tauto?
       have (h : H.preLift.Won) : H.preLift.Winnable := (PreLift.WLift.mk _ h).winnable; tauto
     have := Lift.con_of_short (hyp := hyp); tauto
-  · let Ht := (H.dropLast (by synth_isPosition))
+  · let Ht := H.dropLast (by synth_isPosition)
     rcases ih Ht (by dsimp [Ht]; synth_isPosition) with ih | ih
     · have : ¬ H.preLift.Winnable → ¬ Ht.preLift.Winnable := by
         intro hw h; apply hw; exact h.winnable_of_le (by simp [Ht, dropLast])
@@ -99,7 +99,7 @@ lemma losable_or_winnable :
         by_cases hc : HL.toLift.Con
         · exact hc
         · have hlif : (PreLift.LLift.mk _ ih.1).toLift =
-            HL.toLift.take (2 * k + 1 + n) (by abstract omega) := by
+            HL.toLift.take (2 * k + 1 + n) (by as_aux_lemma => omega) := by
             ext1
             · simp [HL, Ht, dropLast, hn]
             · dsimp [HL, PreLift.LLift.S]; congr! 1; simp [Ht, dropLast]
@@ -135,7 +135,7 @@ lemma losable_or_winnable :
         ext1
         · ext1
           · simpa [extension, PreLift.extension, hnW, hnW', ih, Ht] using
-              H.x_mem_tree' (by abstract omega) (by abstract synth_isPosition)
+              H.x_mem_tree' (by as_aux_lemma => omega) (by as_aux_lemma => synth_isPosition)
           · rfl
         · dsimp [PreLift.LLift.S]; congr! 1; simp [Ht, dropLast]
     · exact Or.inr (ih.winnable_of_le (by simp [Ht, dropLast]))
@@ -143,17 +143,17 @@ lemma losable_or_winnable :
 lemma x_mem_tree_short' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Player.one) :
   Tree.take (n + 1) (pInv π (Tree.take (2 * k) (subtree_incl _ H.x))) =
   (H.R (pInv π (subtree_incl _ (Tree.take n H.x)))
-    (by abstract synth_isPosition)).valT' := by
+    (by as_aux_lemma => synth_isPosition)).valT' := by
   have hx := (Tree.take (n + 1) H.x).prop; have := H.hlvl
-  rw [take_coe, ← List.take_concat_get' _ _ (by abstract omega)] at hx
+  rw [take_coe, ← List.take_concat_get' _ _ (by as_aux_lemma => omega)] at hx
   replace hx := subtree_compatible _ (Tree.take n H.x) hp hx
   simp only [subtree_incl_coe, take_coe, Set.mem_singleton_iff] at hx
   rw [stratMap'_short _ _ _ (by
     simp only [subtree_incl_coe, take_coe, List.length_take, min_le_iff, h, true_or])] at hx
   apply_fun Subtype.val at hx; simp at hx
-  apply Fixing.inj (f := π) (ht := by abstract synth_fixing)
+  apply Fixing.inj (f := π) (ht := by as_aux_lemma => synth_fixing)
   ext1; simp_rw [take_apply π]; simp [List.take_take]
-  rw [min_eq_left (by abstract synth_isPosition)]
+  rw [min_eq_left (by as_aux_lemma => synth_isPosition)]
   rw [← List.take_concat_get', hx, ExtensionsAt.val', List.map_append]; congr
   · show _ = (π _).val; simp
   · simp [ResStrategy.fromMap]; rfl
@@ -166,26 +166,26 @@ lemma x_mem_tree_short (h : n < 2 * k) (hp : IsPosition (H.x.val.take n) Player.
   erw [ExtensionsAt.val'_get_last_of_eq _ (by have := H.hlvl; synth_isPosition)]
 
 lemma get_eq_get_take (hn : n < H.x.val.length) (hk : 2 * k ≤ n) : H.x.val[n] =
-  (H.take (n + 1) (by abstract omega)).x.val[(H.take (n + 1) (by abstract omega)).x.val.length - 1]'
-    (by abstract simp; omega) := by simp; congr; omega
+  (H.take (n + 1) (by as_aux_lemma => omega)).x.val[(H.take (n + 1) (by as_aux_lemma => omega)).x.val.length - 1]'
+    (by as_aux_lemma => simp; omega) := by simp; congr; omega
 set_option maxHeartbeats 400000 in
 lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree := by
   apply subtree_induction (S := ⊤) (by simpa using h.lift'.lift.prop)
   have := H.hlvl; intro n _ _ _ _; rcases lt_or_ge n (2 * k + 1) with hn' | hn'
   · show _ = H.R (Tree.take n h.lift'.lift) _; ext1
-    have hl := H.x.prop.2 (y := H.x.val.take n) (a := H.x.val[n]'(by abstract have := H.hlvl; omega))
-      (by simpa using List.take_prefix _ _) (by abstract synth_isPosition)
+    have hl := H.x.prop.2 (y := H.x.val.take n) (a := H.x.val[n]'(by as_aux_lemma => have := H.hlvl; omega))
+      (by simpa using List.take_prefix _ _) (by as_aux_lemma => synth_isPosition)
     simp [stratMap'] at hl
-    conv => lhs; simp (config := {singlePass := true}) only [List.getElem_take' _ _ hn',
+    conv => lhs; simp (config := {singlePass := true}) only [List.getElem_take' _ hn',
       Lift.liftVal_take_short]
     simp [Lift.liftVeryShort]
-    rw [List.getElem_append_left (by abstract synth_isPosition)]
-    erw [H.x_mem_tree_short (by abstract synth_isPosition) (by abstract synth_isPosition)]
+    rw [List.getElem_append_left (by as_aux_lemma => synth_isPosition)]
+    erw [H.x_mem_tree_short (by as_aux_lemma => synth_isPosition) (by as_aux_lemma => synth_isPosition)]
     congr!
-    · rw [pInv_treeHom_val _ _ (by abstract synth_isPosition), Lift.liftVal_take_init]
+    · rw [pInv_treeHom_val _ _ (by as_aux_lemma => synth_isPosition), Lift.liftVal_take_init]
       · simp
       · omega
-    apply Fixing.inj (f := π) (ht := by abstract synth_fixing); ext1; simp
+    apply Fixing.inj (f := π) (ht := by as_aux_lemma => synth_fixing); ext1; simp
     erw [h.lift'.liftVal_lift]; dsimp
   rcases hn'.eq_or_gt with rfl | hn'
   · simp; apply Subtype.ext; conv => lhs; simp [Lift.liftVal]
@@ -195,21 +195,21 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
       simp [Lift.liftShort, strategyEquivSystem]
       rw [ExtensionsAt.val'_get_last_of_eq _ (by simp)]
       congr! <;> [skip; ext1] <;> simp
-  · apply extensionsAt_ext_fst (x := Tree.take n h.lift'.lift) _ _ (by abstract synth_isPosition)
-    by_cases hW : (H.take n (by abstract omega)).preLift.Won
-    · rw [h.lift'.liftVal_lift_get (by abstract synth_isPosition)]; simp
-      rw [H.get_eq_get_take _ (by abstract omega),
-        x_mem_tree _ (by abstract synth_isPosition) (by abstract synth_isPosition)]
+  · apply extensionsAt_ext_fst (x := Tree.take n h.lift'.lift) _ _ (by as_aux_lemma => synth_isPosition)
+    by_cases hW : (H.take n (by as_aux_lemma => omega)).preLift.Won
+    · rw [h.lift'.liftVal_lift_get (by as_aux_lemma => synth_isPosition)]; simp
+      rw [H.get_eq_get_take _ (by as_aux_lemma => omega),
+        x_mem_tree _ (by as_aux_lemma => synth_isPosition) (by as_aux_lemma => synth_isPosition)]
       dsimp [extension, PreLift.extension]; split
       · simp [Lift'.extensionMap, Lift'.extension, strategyEquivSystem]
         congr! <;> [skip; ext1] <;> (
           simp only [dropLast, take_coe, take_trans, preLift_take, Lift'.lift_coe,
             PreLift.Losable.lift'_toLift, subtree_incl_coe]
-          rw [← Lift.liftVal_take _ _ (by abstract omega)]
+          rw [← Lift.liftVal_take _ _ (by as_aux_lemma => omega)]
           congr 1; ext1
           · simp; congr; synth_isPosition
           · apply PreLift.WLift.toLift_mono; simp)
-      · rename_i _ hif; cases hif (by abstract simp [dropLast] at hW ⊢; convert hW; synth_isPosition)
+      · rename_i _ hif; cases hif (by as_aux_lemma => simp [dropLast] at hW ⊢; convert hW; synth_isPosition)
     · let H' := PreLift.WLift.mk _ h; have hux := H'.u_spec'
       have hul : H'.u.val.length > n - (2 * k + 1) := by
         simp [PreLift.Won] at hW; by_contra
@@ -221,18 +221,18 @@ lemma wLift_mem_tree (h : H.preLift.Won) : h.lift'.liftVal ∈ H.R.pre.subtree :
       have hR := mem_getTree (H.R ⟨h.lift'.liftVal.take n, pf2⟩ (by
         synth_isPosition)).valT'
       simp at hR
-      rw [ExtensionsAt.val'_take_of_le _ (by abstract synth_isPosition)] at hR
+      rw [ExtensionsAt.val'_take_of_le _ (by as_aux_lemma => synth_isPosition)] at hR
       simp (disch := omega) [List.take_take] at hR
-      erw [h.lift'.liftVal_take_short (by abstract synth_isPosition)] at hR
+      erw [h.lift'.liftVal_take_short (by as_aux_lemma => synth_isPosition)] at hR
       erw [H'.getTree_liftShort] at hR
       simp at hR
-      rw [mem_pullSub_short (by abstract synth_isPosition)] at hR
+      rw [mem_pullSub_short (by as_aux_lemma => synth_isPosition)] at hR
       replace hR := hR.1; simp [List.prefix_iff_eq_take] at hR
       conv => rhs; erw [← ExtensionsAt.val'_get_last,
         ← List.getElem_map Prod.fst (h := by simp)]
       simp_rw (config := {singlePass := true}) [PreLift.Won.lift'_toLift, hR]
-      simp; erw [List.getElem_append_right (by abstract synth_isPosition)]
-      conv => lhs; erw [h.lift'.liftVal_lift_get (by abstract synth_isPosition)]
+      simp; erw [List.getElem_append_right (by as_aux_lemma => synth_isPosition)]
+      conv => lhs; erw [h.lift'.liftVal_lift_get (by as_aux_lemma => synth_isPosition)]
       simp
       rw [List.prefix_iff_eq_take] at hux; simp_rw (config := {singlePass := true}) [hux]
       simp; congr; synth_isPosition
@@ -242,19 +242,19 @@ lemma lLift_mem_tree (h : H.preLift.Losable) :
   apply subtree_induction (S := ⊤) (by simpa using h.lift'.lift.prop)
   have := H.hlvl; intro n _ _ _ _; rcases lt_or_ge n (2 * k + 1) with hn' | hn'
   · show _ = H.R (Tree.take n h.lift'.lift) _; ext1
-    have hl := H.x.prop.2 (y := H.x.val.take n) (a := H.x.val[n]'(by abstract have := H.hlvl; omega))
-      (by simpa using List.take_prefix _ _) (by abstract synth_isPosition)
+    have hl := H.x.prop.2 (y := H.x.val.take n) (a := H.x.val[n]'(by as_aux_lemma => have := H.hlvl; omega))
+      (by simpa using List.take_prefix _ _) (by as_aux_lemma => synth_isPosition)
     simp [stratMap'] at hl
-    conv => lhs; simp (config := {singlePass := true}) only [List.getElem_take' _ _ hn',
+    conv => lhs; simp (config := {singlePass := true}) only [List.getElem_take' _ hn',
       Lift.liftVal_take_short]
     simp [Lift.liftVeryShort]
     rw [List.getElem_append_left (by synth_isPosition)]
-    erw [H.x_mem_tree_short (by abstract synth_isPosition) (by abstract synth_isPosition)]
+    erw [H.x_mem_tree_short (by as_aux_lemma => synth_isPosition) (by as_aux_lemma => synth_isPosition)]
     congr!
     · rw [pInv_treeHom_val _ _ (by synth_isPosition), Lift.liftVal_take_init]
       · simp
       · omega
-    apply Fixing.inj (f := π) (ht := by abstract synth_fixing); ext1; simp
+    apply Fixing.inj (f := π) (ht := by as_aux_lemma => synth_fixing); ext1; simp
     erw [h.lift'.liftVal_lift]; dsimp
   rcases hn'.eq_or_gt with rfl | hn'
   · simp; apply Subtype.ext; conv => lhs; simp [Lift.liftVal]
@@ -264,30 +264,30 @@ lemma lLift_mem_tree (h : H.preLift.Losable) :
       simp [Lift.liftShort, strategyEquivSystem]
       rw [ExtensionsAt.val'_get_last_of_eq _ (by simp)]
       congr! <;> [skip; ext1] <;> simp
-  · apply extensionsAt_ext_fst (x := Tree.take n h.lift'.lift) _ _ (by abstract synth_isPosition)
+  · apply extensionsAt_ext_fst (x := Tree.take n h.lift'.lift) _ _ (by as_aux_lemma => synth_isPosition)
     rw [h.lift'.liftVal_lift_get (by synth_isPosition)]; simp
-    rw [H.get_eq_get_take _ (by abstract omega),
-      x_mem_tree _ (by abstract synth_isPosition) (by abstract synth_isPosition)]
+    rw [H.get_eq_get_take _ (by as_aux_lemma => omega),
+      x_mem_tree _ (by as_aux_lemma => synth_isPosition) (by as_aux_lemma => synth_isPosition)]
     unfold extension
     rw [PreLift.extension_losable (h := h.losable_of_le (by simp [dropLast]))]
     simp [Lift'.extensionMap, Lift'.extension, strategyEquivSystem]
     congr! <;> [skip; ext1] <;> (
       simp only [dropLast, take_coe, take_trans, preLift_take, Lift'.lift_coe,
         PreLift.Losable.lift'_toLift, subtree_incl_coe]
-      rw [← Lift.liftVal_take _ _ (by abstract omega)]
+      rw [← Lift.liftVal_take _ _ (by as_aux_lemma => omega)]
       congr 1; ext1
       · simp_rw [PreLift.LLift.toLift_toPreLift, Lift.take_toPreLift]; congr; synth_isPosition
       · dsimp [PreLift.LLift.S]; congr! 1; rw [PreLift.game_take])
 
 lemma take_winnable (h : H.preLift.Winnable) n :
-  (H.take (2 * k + 1 + h.num + n) (by abstract omega)).preLift.Winnable :=
+  (H.take (2 * k + 1 + h.num + n) (by as_aux_lemma => omega)).preLift.Winnable :=
   h.takeMin_winnable.winnable_of_le (by simp [PreLift.Winnable.takeMin, - PreLift.instLE_le])
 lemma winnable_subtree (hL : H.preLift.Winnable) (hnL : ¬ ∃ h, (H.dropLast h).preLift.Won) :
   H.x.val.drop (2 * k + 1 + hL.num) ∈ hL.strat.pre.subtree := by
   apply subtree_induction (S := ⊤) (by simpa [PreLift.game_tree] using subtree_sub _ H.x.prop)
   intro n hn _ _ _; simp at hn ⊢
-  have htr := (H.take (2 * k + 1 + hL.num + n + 1) (by abstract omega)).x_mem_tree
-    (by abstract synth_isPosition) (by abstract synth_isPosition); simp at htr
+  have htr := (H.take (2 * k + 1 + hL.num + n + 1) (by as_aux_lemma => omega)).x_mem_tree
+    (by as_aux_lemma => synth_isPosition) (by as_aux_lemma => synth_isPosition); simp at htr
   simp (disch := omega) only [min_eq_left, Nat.add_sub_cancel] at htr
   apply Subtype.ext; dsimp; rw [htr]
   simp only [dropLast, take_R, take_x, take_coe, List.length_take, take_trans, tsub_le_iff_right,
@@ -338,11 +338,11 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
         simp [TreeLift.dropLast, - TreeLift.preLift_take] at h' ⊢; intro _
         rw [bodyTake_take _ (by omega)]; apply h')
     simp [Stream'.take_drop] at this ⊢; generalize_proofs pf1 pf2 pf3 at this
-    rw [h.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _)
+    rw [h.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _)
       (by simp) rfl] at this
     simp_rw [add_assoc] at this ⊢; convert this using 4
     exact (WinningPrefix.prefix_num _
-      (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _) (by simp) rfl).symm
+      (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _) (by simp) rfl).symm
   have hw := h.strat_winning hb
   simp only [takeLift_game, TreeLift.preLift_x_coe, bodyTake_R, bodyTake_x, body.take_coe, id_eq,
     residual_tree, Player.payoff_residual, Player.residual_residual, List.length_append,
@@ -357,7 +357,7 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
   simp [List.take_drop]; rw [← Stream'.drop_append_of_le_length _ _ _ (by simp)]
   generalize_proofs pf; suffices pf.num ≤ n by simp [this]
   convert h.num_le_length using 1
-  · nth_rw 2 [pf.prefix_num (((Stream'.take_prefix _ _ _).mpr (by abstract synth_isPosition)).drop _)
+  · nth_rw 2 [pf.prefix_num (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _)
     (by simp) rfl]
   · simp
 
