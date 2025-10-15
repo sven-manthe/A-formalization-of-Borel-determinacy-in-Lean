@@ -70,7 +70,7 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
       · rw [getTree_eq' _ ih, List.map_drop, ← H.liftVal_take _ (by omega), WLLift.liftVal_lift,
           mem_subAt, toWLift_toLift, take_toPreLift, PreLift.take_x, take_coe, ← List.take_drop,
           List.getElem_drop', List.take_concat_get', List.take_drop, ← hn]
-        simp [List.take_take, toWLift]
+        simp [toWLift]
         apply WinningPrefix.mem_defensiveQuasi ⟨_, by simpa [Lift.liftNode] using hW.conLong⟩
         intro hwin; apply hW
         simpa [Lift.liftNode] using hwin.winningPrefix_of_residual
@@ -104,7 +104,7 @@ lemma losable (h : H.ConLong) : H.Losable := by
   use h; use H.x.val.length - (2 * k + 1); rw [List.take_of_length_le (by simp)]
   apply AllWinning.existsWinning _ (H.game_pruned.sub _); have hL := H.lost'
   simp [Lost', WonPosition, AllWinning] at hL ⊢
-  rw [Set.eq_empty_iff_forall_not_mem] at *; rintro ⟨x, hx⟩ ⟨hx', hxp⟩
+  rw [Set.eq_empty_iff_forall_notMem] at *; rintro ⟨x, hx⟩ ⟨hx', hxp⟩
   simp [Nat.add_mod] at hx hx' hxp; apply hL ⟨x, by
     simpa [← Stream'.append_append_stream] using body_mono H.game_tree_sub hx⟩
   simp; convert hxp.1 using 1; ext1; simp [← Stream'.append_append_stream, hxp.2]
@@ -184,14 +184,14 @@ lemma liftMedium_mem : hL.1.mk.toWLLift.liftMediumVal ∈ T' := by
     simpa using mem_of_prefix ⟨(hL.1.mk.takeMin.x.val.drop (2 * k + 1)).tail, by
       simp
       rw [← List.getElem_take, List.getElem_cons_drop]
-      simp [Nat.sub_eq_zero_iff_le, Nat.lt_iff_add_one_le]⟩ hL.2
+      simp [Nat.lt_iff_add_one_le]⟩ hL.2
   · simp; left; rw [LosingCondition.concat]
     refine ⟨?_, ⟨hL.1.mk.takeMin.x.val.drop (2 * k + 2), ?_⟩, ?_⟩
     · simp [LLift.toWLLift]; rw [← Set.subset_empty_iff]
       rintro _ ⟨⟨z, hzb, hze⟩, ⟨_, _, rfl⟩⟩
       apply (wonPosition_iff_disjoint'.mp hL.1.mk.min_prefix).subset ⟨_, by simpa⟩
       use ⟨z, by simpa⟩; ext1
-      simp [← Stream'.append_append_stream, H.liftShort_val_map] at hze
+      simp [← Stream'.append_append_stream] at hze
       rw [List.drop_take, ← List.take_add] at hze
       simpa using hze
     · rw [LLift.takeMin_x_coe]; simp; rw [List.getElem_take', List.getElem_cons_drop]
@@ -205,8 +205,7 @@ lemma lift_mem n : hL.1.mk.toWLLift.liftMediumVal ++
   (fun a y ↦ ⟨a, subAt hL.1.mk.toWLLift.liftTree y⟩) ∈ T' := by
   induction' n with n ih
   · simpa using hL.liftMedium_mem
-  · simp only [List.take_succ, List.zipInitsMap_append, List.getElem?_drop,
-      WLLift.getTree_liftMediumVal, oldAsTrees_fst] at ih ⊢
+  · simp only [List.take_succ, List.zipInitsMap_append, List.getElem?_drop] at ih ⊢
     by_cases hn : 2 * k + 2 + n ≥ H.x.val.length
     · erw [List.getElem?_eq_none_iff.mpr hn]
       simpa only [Option.toList_none, List.zipInitsMap_nil, List.append_nil] using ih
@@ -271,7 +270,7 @@ lemma extensionPreLift_take :
 @[simps! toPreLift] def extensionLift : Lift hyp where
   toPreLift := h.extensionPreLift hp
   h'lvl := by simp
-  conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort
+  conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort; exact H.hlvl
 lemma extensionLift_take :
   (h.extensionLift hp).take H.x.val.length H.h'lvl = H := by
   ext1; apply extensionPreLift_take

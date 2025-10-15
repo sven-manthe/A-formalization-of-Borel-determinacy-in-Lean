@@ -37,9 +37,11 @@ syntax (name := simpAtStar) "simpAtStar" (Parser.Tactic.config)?
   (Parser.Tactic.discharger)? (&" only")?
   (" [" withoutPosition((Parser.Tactic.simpStar
     <|> Lean.Parser.Tactic.simpErase <|> Parser.Tactic.simpLemma),*,?) "]")? : tactic
+set_option linter.unusedVariables false in
 @[tactic simpAtStar] def evalSimpAtStar : Tactic :=
   fun stx => withMainContext do withSimpDiagnostics do
-  let { ctx, simprocs, dischargeWrapper } ← mkSimpContext stx (eraseLocal := false)
+  let { ctx, simprocs, dischargeWrapper, simpArgs } ←
+    mkSimpContext stx (eraseLocal := false)
   let stats ← dischargeWrapper.with fun discharge? =>
     simpLocationAtStar ctx simprocs discharge?
   return stats.diag

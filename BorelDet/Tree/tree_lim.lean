@@ -56,8 +56,8 @@ def resEq_counit_comp k T : (constTree k).obj ((resEq k).obj T) ⟶ T where
     intro x y h; dsimp only [rem_trees_snd]; by_cases hx : x.val = []
     · simp only [hx, take_coe, List.length_nil, le_def_trees, List.take_zero, List.nil_prefix]
     · have h' : headD x = headD y := by simpa only [← headD_nonempty] using h.head hx
-      simp only [h', Functor.comp_obj, le_def_trees, List.prefix_take_iff,
-        List.take_prefix, List.length_take, resEq_len, ge_iff_le, constTree_length,
+      simp only [h', le_def_trees, List.prefix_take_iff,
+        List.take_prefix, List.length_take, resEq_len, constTree_length,
         min_eq_left, List.IsPrefix.length_le h, and_self, take_coe]
   h_length _ := by simp only [take_coe, List.length_take, resEq_len, constTree_length, min_eq_left]
 def resEq_counit k : resEq k ⋙ constTree k ⟶ 𝟭 _ where
@@ -69,25 +69,27 @@ def resEq_counit k : resEq k ⋙ constTree k ⟶ 𝟭 _ where
     rw [take_apply f x.val.length]
     by_cases hxl : x.val = []
     · rw [congr_arg List.length hxl]; rfl
-    · rw [headD_nonempty]; simp_rw [headD_nonempty _ hxl]
-      rw [head_constTree_map]; rfl
+    · rw [headD_nonempty]
+      · simp_rw [headD_nonempty _ hxl]
+        rw [head_constTree_map]; rfl
+      · simpa [List.ne_nil_iff_length_pos] using hxl
 def resEqAdj (k : ℕ) : constTree k ⊣ resEq k := Adjunction.mkOfUnitCounit {
   unit := resEq_unit k
   counit := resEq_counit k
   left_triangle := by
     ext A x; simp only [Functor.comp_obj, Functor.id_obj, resEq_counit,
-      NatTrans.comp_app, whiskerRight_app, Functor.associator_hom_app, whiskerLeft_app,
+      NatTrans.comp_app, Functor.whiskerRight_app, Functor.associator_hom_app, Functor.whiskerLeft_app,
       Category.id_comp, CategoryTheory.comp_apply, LenHom.mk_eval, LenHom.h_length_simp,
       Set.mem_setOf_eq, NatTrans.id_app', CategoryTheory.id_apply, take_coe, resEq_counit_comp]
     by_cases hxl : x.val = []
     · rw [congr_arg List.length hxl, hxl]; rfl
     · rw [headD_nonempty, head_constTree_map, ← headD_nonempty _ hxl, resEq_unit]
-      simp only [List.take_replicate, constTree_length, min_eq_left, eq_replicate_headD]
+      · simp only [List.take_replicate, constTree_length, min_eq_left, eq_replicate_headD]
+      · exact hxl
+      · simpa [List.ne_nil_iff_length_pos] using hxl
   right_triangle := by
     ext T (x : (resEq k).obj T); dsimp; ext1
-    simp only [Functor.id_obj, resEq_counit, FunctorToTypes.comp, whiskerLeft_app,
-      Functor.associator_inv_app, Functor.comp_obj, types_id_apply, whiskerRight_app,
-      resEq_map, LenHom.mk_eval, resEq_len, NatTrans.id_app', take_coe, resEq_counit_comp]
+    simp only [resEq_counit, LenHom.mk_eval, resEq_len, take_coe, resEq_counit_comp]
     have hxl : x.val.length = k := x.prop.2
     rcases k with _ | _
     · simpa only [List.take_zero] using (List.eq_nil_of_length_eq_zero hxl).symm
@@ -125,9 +127,8 @@ def limCone : Limits.Cone F where
 def isLimit_lift (s : Limits.Cone F) : s.pt ⟶ (limCone F).pt where
   toFun x := ⟨List.zipFun (n := x.val.length) (fun j ↦ ((s.π.app j) x).val)
     (fun _ ↦ LenHom.h_length_simp _ x), by
-    simp only [limCone, limObj, OrderHom.toFun_eq_coe, rem_toOrderHom,
-      Functor.const_obj_obj, Set.mem_setOf_eq, List.mapEval_zip, Subtype.coe_eta,
-      SetLike.coe_mem, implies_true, exists_const]
+    simp only [limCone, limObj, Functor.const_obj_obj, Set.mem_setOf_eq, List.mapEval_zip,
+      Subtype.coe_eta, SetLike.coe_mem, implies_true, exists_const]
     intro _ _ f; rw [← s.w f]; rfl⟩
   monotone' x y h := List.zipFun_mono _ _ _ _ h.length_le (fun j ↦ (s.π.app j).monotone' h)
   h_length _ := by simp only [List.zipFun_len]

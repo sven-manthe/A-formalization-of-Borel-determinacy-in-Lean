@@ -15,7 +15,7 @@ def Player.ownTree (p : Player) (a : Stream' A) : Strategy (⊤ : tree A) p :=
     rw [Stream'.take_succ'] at h
     have h' := congr_arg Subtype.val (subtree_compatible _ ⟨_, mem_of_append h⟩
       (by synth_isPosition) h)
-    simp only [Set.mem_singleton_iff] at h'; rw [h']
+    dsimp only at h'; rw [h']
     cases p <;> simp [ownTree, Player.toNat, Stream'.get]
   intro xr hx; induction' xr using List.reverseRecOn with xr b ih
   · simp
@@ -61,7 +61,7 @@ lemma Game.exists_undetermined :
       _ = 2 * 2 ^ (2 * ℵ₀) := by norm_num
       _ = 2 * (2 ^ 2) ^ ℵ₀ := by rw [power_mul]; rfl
       _ = #(Player × (List (Fin 2) → Set (Fin 2))) := by simp; norm_num
-    rw [h, le_def] --via uncurry, use last?
+    rw [h, Cardinal.le_def] --via uncurry, use last?
     use fun ⟨p, f, _⟩ ↦ ⟨p, fun x ↦
       if h : IsPosition x p then Subtype.val '' f ⟨_, CompleteSublattice.mem_top⟩ h else ∅⟩
     intro ⟨p, ⟨s, hs⟩⟩ ⟨q, ⟨t, ht⟩⟩ h; simp_rw [Prod.mk.injEq] at h; obtain ⟨rfl, h⟩ := h

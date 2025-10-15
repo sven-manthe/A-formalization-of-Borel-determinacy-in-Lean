@@ -54,7 +54,7 @@ lemma IsPruned.pullSub {T : tree A} (hP : IsPruned T) (x : List A) : IsPruned (p
   intro ⟨y, hy⟩; rcases lt_or_ge y.length x.length with h | h
   · rw [mem_pullSub_short (by omega), List.prefix_iff_eq_take] at hy; use x.get ⟨y.length, h⟩
     simp_rw (config := {singlePass := true}) [hy.1]
-    simp [h.le, (by omega : y.length + 1 ≤ x.length), List.take_concat_get']
+    simp [h.le]
     constructor
     · rw [List.take_take]; apply List.take_prefix
     · rw [List.drop_take]; simpa [h] using hy.2

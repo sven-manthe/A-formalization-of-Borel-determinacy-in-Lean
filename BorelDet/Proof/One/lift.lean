@@ -25,11 +25,11 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
   hlvl := by simp
   liftTree := H.liftTree
   htree := by
-    obtain ⟨S, hS⟩ := H.htree;  use cast (by simp [List.take_take]) S
-    rw [hS]; symm; apply cast_subtree (by simp [List.take_take]) rfl
+    obtain ⟨S, hS⟩ := H.htree;  use cast (by simp) S
+    rw [hS]; symm; apply cast_subtree (by simp) rfl
 @[simp] lemma extensionLift_take :
   (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toLift := by
-  ext1 <;> [ext1; skip] <;> simp [extensionMap, ← take_apply π]
+  ext1 <;> [ext1; skip] <;> simp [extensionMap]
 @[simp] lemma extensionLift_liftShort : (H.extensionLift hp R).liftShort = H.liftShort := by
   rw [← extensionLift_take, Lift.liftShort_take]
 @[simp] lemma extensionLift_wonPos : (H.extensionLift hp R).WonPos = H.WonPos := by
@@ -41,7 +41,7 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
     erw [getTree_eq H.lift] at h; simp at h
     simp [Lift.Con, ExtensionsAt.val']
     by_cases hl : H.x.val.length = 2 * k + 1
-    · nth_rw 1 [mem_pullSub_short (by synth_isPosition), List.drop_append_eq_append_drop]
+    · nth_rw 1 [mem_pullSub_short (by synth_isPosition), List.drop_append]
       simp [← hl, (getTree_ne_and_pruned H.liftShort).1, extensionMap]
       simp [Lift.liftShort, extension, ← hR, ResStrategy.res]
       rw [ExtensionsAt.val'_get_last_of_eq _ (by simpa)]
@@ -80,7 +80,7 @@ lemma toLift_mono {H H' : LLift hyp} (h : H.toPreLift ≤ H'.toPreLift) :
   H.toLift.liftTree = H'.toLift.liftTree := by simp [S]; congr! 1; rw [← h]; simp
 lemma winning_condition : WinningCondition H.toLift.liftShort.val (by simp) := by
   rw [← not_losing]; apply _root_.not_imp_self.mp; intro hlos
-  unfold LosingCondition; simp [Set.eq_empty_iff_forall_not_mem]
+  unfold LosingCondition; simp [Set.eq_empty_iff_forall_notMem]
   intro _ u hu1 hu2; simp [Lift.liftVeryShort] at hu1
   let qS : QuasiStrategy (H.game.residual _).tree _ :=
     (H.game.defensiveQuasi Player.one (hyp.pruned.sub _)).residual
@@ -169,13 +169,13 @@ lemma u_zero : H.u.val[0]'(by simpa [List.length_pos_iff] using H.u_nil)
     · rw [mem_pullSub_long (by
         have := hu.length_le; synth_isPosition)]
       obtain ⟨z, hz⟩ := hu; use z; simp [hz]
-      rw [← (H.x.val.drop _).head_cons_tail (by synth_isPosition)]
+      rw [← (H.x.val.drop _).cons_head_tail (by synth_isPosition)]
       congr
       · simp [List.head_drop, ← WLift.u_zero]
         show H.x.val[(2 * k + 1) + 0] = _
         rw [List.getElem_drop']; simp_rw [← hz]; rw [List.getElem_append_left]
       · apply_fun List.tail at hz; simp at hz; simp [← hz]
-        simp [List.tail_append, WLift.u_nil]
+        simp [WLift.u_nil]
 attribute [simp_lengths] toLift_toPreLift toLift'_toLift
 
 universe u v in
@@ -227,7 +227,7 @@ lemma toLift_mono {H H' : WLift hyp} (h : H.toPreLift ≤ H'.toPreLift) :
     · rw [takeMin_eq_le h]
     · congr!
     · congr 1
-      · congr; congr!
+      · congr
       · congr! 3
         · rw [takeMin_eq_le h]
         · congr! 3; rw [takeMin_eq_le h]

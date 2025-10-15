@@ -64,7 +64,7 @@ noncomputable def nat_free_cat : (ℕᵒᵖ ⥤ C) ≃ ((O : ℕ → C) × (∀ 
     obj := O ∘ Opposite.unop
     map := @fun m n ↦ fun h ↦ eqToHom (by simp [leOfHom h.unop]) ≫ (recComp n.unop (m.unop-n.unop) F)
     map_comp := by
-      intros m n k h1 h2; simp [leOfHom h1.unop, leOfHom h2.unop]
+      intros m n k h1 h2; simp [leOfHom h2.unop]
       congr 1; swap; apply heq_eqToHom; pick_goal 3; congr
       all_goals simp [Nat.add_sub_sub_of_le, leOfHom h1.unop, leOfHom h2.unop, leOfHom (h1 ≫ h2).unop]
   }

@@ -19,8 +19,8 @@ variable {A : Type*} (G : Game A) (p : Player)
 /-- whether there exists a prefix of `x` that is a winning position for `p` -/
 def WinningPrefix (x : List A) := ∃ (n : ℕ),
   (G.residual (x.take n)).ExistsWinning (p.residual (x.take n))
-lemma winningPrefix_of_not_mem {x} (h : x ∉ G.tree) : WinningPrefix G p x := by
-  use x.length; simpa [residual_not_mem G x h] using existsWinning_empty
+lemma winningPrefix_of_notMem {x} (h : x ∉ G.tree) : WinningPrefix G p x := by
+  use x.length; simpa [residual_notMem G x h] using existsWinning_empty
 variable {G p}
 lemma _root_.GaleStewartGame.Game.WinningPosition.winningPrefix {x} (h : WinningPosition G x p) :
   WinningPrefix G (p.residual x) x := ⟨x.length, by simpa⟩
@@ -35,7 +35,7 @@ lemma winningPrefix_of_residual {x y : List A}
   WinningPrefix G (p.residual x) (x ++ y) := by
   obtain ⟨n, hW⟩ := hW; use x.length + n
   convert hW using 1
-  · simp_rw [List.take_append, residual_append]
+  · simp_rw [List.take_length_add_append, residual_append]
   · synth_isPosition
 section
 variable {x : List A} (h : WinningPrefix G p x)
@@ -204,7 +204,7 @@ lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
     · simpa [h''] using h'
     · dsimp at h''
       have hlen : h.num - 1 < x.length := by have := h.num_le_length; omega
-      rw [h'', ← List.take_concat_get']
+      rw [h'', ← List.take_concat_get' _ _ hlen]
       apply mem_winAsap_subtree_of_no_prefix
       · intro h'; have hl := h'.num_le_length
         simp [← h'.extend_num (y := x.drop (h.num - 1))] at hl
@@ -227,7 +227,7 @@ lemma winAsap_subtree {x} (h : WinningPrefix G p x) :
       rw [subtree_compatible_iff _ ⟨_, mem_of_append h'⟩ (by as_aux_lemma => synth_isPosition)] at h'
       obtain ⟨_, h'⟩ := h'; simp at h'
       apply_fun Subtype.val at h'
-      simp [winAsap, h.shrink.extend y, Strategy.pre]
+      simp [winAsap, h.shrink.extend y]
       apply ExtensionsAt.ext (x := (PreStrategy.subtree_incl _ ⟨_, _⟩)) --why necessary?
       rw [h']; simp; symm
       apply h.extend_strat_apply

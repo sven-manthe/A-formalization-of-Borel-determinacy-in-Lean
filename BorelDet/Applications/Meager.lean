@@ -65,7 +65,7 @@ lemma Dense.dense_in_open (hU : IsOpen U) (hD : Dense A) : Dense (U ↓∩ A) :=
 lemma somewhereDense_iff : ¬ IsNowhereDense A ↔ ∃ U, U.Nonempty ∧ IsOpen U ∧ Dense (U ↓∩ A) := by
   simp_rw [Subtype.dense_iff, Subtype.image_preimage_coe]; constructor
   · intro h
-    use interior (closure A), Set.nmem_singleton_empty.mp h, isOpen_interior
+    use interior (closure A), Set.notMem_singleton_empty.mp h, isOpen_interior
     apply subset_trans _ isOpen_interior.inter_closure; simp [Eq.subset, interior_subset]
   · intro ⟨U, hUd, hUo, hUs⟩; simp_rw [IsNowhereDense, ← Set.nonempty_iff_ne_empty]
     use hUd.choose; rw [mem_interior]
@@ -121,7 +121,7 @@ lemma closure_open_cover {I} (U : I → Set X) (hO : ∀ i, IsOpen (U i)) (hcov 
   tauto_set
 lemma interior_open_cover {I} (U : I → Set X) (hO : ∀ i, IsOpen (U i)) (hcov : ⋃ i, U i = Set.univ) :
     interior A = ⋃ i, interior (A ∩ U i) := by
-  apply subset_antisymm _ (by simp [interior_mono])
+  apply subset_antisymm _ (by simp)
   intro x hx
   simp_rw [Set.mem_iUnion, mem_interior] at *
   obtain ⟨V, hVA, hVo, hVx⟩ := hx
@@ -192,12 +192,6 @@ lemma IsMeagre.eq_countable_union_isNowhereDense (h : IsMeagre A) :
   · rw [Set.not_nonempty_iff_eq_empty] at hS
     subst hS; use fun f ↦ ⟨∅, isNowhereDense_empty⟩; simp
 
-lemma IsMeagre.union (hA : IsMeagre A) (hB : IsMeagre B) : IsMeagre (A ∪ B) := by
-  simpa [IsMeagre] using ⟨hA, hB⟩
-lemma isMeagre_iUnion' {I} [Countable I] {s : I → Set X} (hs : ∀ n, IsMeagre (s n)) :
-  IsMeagre (⋃ n, s n) := by
-  rw [IsMeagre, Set.compl_iUnion]
-  exact countable_iInter_mem.mpr hs
 lemma IsMeagre.interior [BaireSpace X] {U : Set X} (hU : IsMeagre U) : interior U = ∅ := by
   apply compl_injective
   simpa only [Set.compl_empty, ← closure_compl, ← dense_iff_closure_eq]
@@ -224,7 +218,7 @@ lemma baireSpace_iff_isMeagre_interior : BaireSpace X ↔
   simpa [IsMeagre] using residual_of_dense_open (hO n) (hD n)
 lemma isOpen_isMeagre [BaireSpace X] {U : Set X} (hU : IsOpen U) : IsMeagre U ↔ U = ∅ :=
   ⟨by intro h; rwa [← h.interior, Eq.comm, interior_eq_iff_isOpen],
-    by rintro rfl; exact meagre_empty⟩
+    by rintro rfl; exact IsMeagre.empty⟩
 lemma baireSpace_iff_isMeagre_isOpen : BaireSpace X ↔
   ∀ U : Set X, IsMeagre U → IsOpen U → U = ∅ := by
   constructor
@@ -261,7 +255,7 @@ lemma forces_mono_right (h : U ⊩ A) (hAB : A ⊆ B) : U ⊩ B :=
 lemma forces_iInter_right {I} [Countable I] (A : I → Set X)
   (h : ∀ i, U ⊩ A i) : U ⊩ ⋂ i, A i := by
   simpa [Set.preimage_iInter] using countable_iInter_mem.mpr h
-lemma forces_rfl : U ⊩ U := by rw [forces_iff_isMeagre]; simp [meagre_empty]
+lemma forces_rfl : U ⊩ U := by rw [forces_iff_isMeagre]; simp [IsMeagre.empty]
 lemma forces_trans (hU : U ⊩ V) (h : V ⊩ A) : U ⊩ A := by
   rw [forces_iff_isMeagre] at *
   exact (hU.union h).mono diff_subset_union

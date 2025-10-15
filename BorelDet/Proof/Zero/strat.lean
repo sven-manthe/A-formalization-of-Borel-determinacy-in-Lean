@@ -53,11 +53,11 @@ lemma body_lost_of_losable n (h : (takeLift y n).Losable) (h' : ∀ m, ¬ (takeL
     have := (bodyTake y (h.2.num + m - 1)).losable_subtree (h := by simp) (hL _ (by omega)) (by
       simp only [TreeLift.dropLast, takeLift_game, takeLift_x_coe, bodyTake_R, bodyTake_x,
         body.take_coe, Stream'.length_take, Nat.succ_add_sub_one, TreeLift.take_R, TreeLift.take_x,
-        take_coe, Stream'.take_take, add_le_add_iff_right, add_le_add_iff_left,min_eq_left, not_exists]
+        take_coe, Stream'.take_take, not_exists]
       intro h; simp at h; simp_rw [bodyTake_take y h]; apply h')
     generalize_proofs pf1 pf2 pf3 at this
     simp only [takeLift_x_coe, bodyTake_R, bodyTake_x, body.take_coe, TreeLift.lift_toPreLift,
-      TreeLift.preLift_x_coe, residual_tree, takeLift_game, id_eq] at this
+      TreeLift.preLift_x_coe, residual_tree, takeLift_game] at this
     generalize_proofs at this
     simp [Stream'.take_drop]
     generalize_proofs pf4 pf5
@@ -70,13 +70,11 @@ lemma body_lost_of_losable n (h : (takeLift y n).Losable) (h' : ∀ m, ¬ (takeL
     · omega
   have hw := h.2.strat_winning hb
   generalize_proofs at hw
-  simp only [takeLift_game, takeLift_x_coe, id_eq, residual_tree, Player.payoff_residual,
+  simp only [takeLift_game, takeLift_x_coe, residual_tree, Player.payoff_residual,
     Player.residual_residual, List.length_append, List.length_take, List.length_drop, Stream'.length_take,
     div_add_self, Player.residual_even, Player.payoff_one, Set.preimage_compl] at hw
   simp only [Set.image_val_compl] at hw --simp only slow from here
-  simp only [takeLift_game, takeLift_x_coe, id_eq, residual_tree, Player.payoff_residual,
-    Player.residual_residual, List.length_append, List.length_take, List.length_drop, Stream'.length_take,
-    div_add_self, Player.residual_even, Player.payoff_one, Set.preimage_compl, Set.image_val_compl,
+  simp only [takeLift_game,
     subAt_body, subAt_body_image, body.drop_coe, Set.mem_diff, Set.mem_preimage, Set.mem_image,
     Subtype.exists, exists_and_right, exists_eq_right, not_exists] at hw
   replace hw := hw.2; simp [PreLift.game_payoff, Nat.add_mod] at hw

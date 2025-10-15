@@ -31,8 +31,8 @@ namespace Game
   (G.residual x).residual y = G.residual (x ++ y) := by
   ext1 <;> simp [residual]; split_ifs <;> simp <;> omega
 lemma empty_of_tree (G : Game A) (h : G.tree = ⊥) : G = ⟨⊥, ∅⟩ := by
-  ext1 <;> simp [Set.eq_empty_iff_forall_not_mem, h]
-lemma residual_not_mem (G : Game A) (x : List A) (h : x ∉ G.tree) : G.residual x = ⟨⊥, ∅⟩ := by
+  ext1 <;> simp [Set.eq_empty_iff_forall_notMem, h]
+lemma residual_notMem (G : Game A) (x : List A) (h : x ∉ G.tree) : G.residual x = ⟨⊥, ∅⟩ := by
   apply empty_of_tree; simpa
 end Game
 

@@ -24,16 +24,15 @@ lemma mem_body_of_take m (T : tree A) (x : Stream' A) (h : ∀ n ≥ m, x.take n
 def bodyInfHom : sInfHom (tree A) (Set (Stream' A)) where
   toFun := Tree.body
   map_sInf' := by
-    intro s; ext a; simp only [body, principalOpen, Set.image_univ, Set.mem_range,
-      CompleteSublattice.mem_sInf, forall_exists_index, Set.sInf_eq_sInter, Set.sInter_image,
-      Set.mem_iInter]
+    intro s; ext a; simp only [body, principalOpen, Set.mem_range, CompleteSublattice.mem_sInf,
+      forall_exists_index, Set.sInf_eq_sInter, Set.sInter_image, Set.mem_iInter]
     constructor
     · rintro h T hT x a rfl; exact h x a rfl _ hT
     · rintro h x a rfl T hT; exact h T hT _ _ rfl
 @[simp] lemma body_inter {S T : tree A} : body (S ⊓ T) = body S ∩ body T := by
   show bodyInfHom (S ⊓ T) = bodyInfHom S ∩ bodyInfHom T; simp
 @[simp] lemma body_bot : body (⊥ : tree A) = ∅ := by
-  rw [Set.eq_empty_iff_forall_not_mem]; exact fun x h ↦ h [] (by simp)
+  rw [Set.eq_empty_iff_forall_notMem]; exact fun x h ↦ h [] (by simp)
 @[simp] lemma body_isClosed : IsClosed (body T) := by
   simp_rw [← isOpen_compl_iff, isOpen_iff_mem_nhds, mem_nhds_iff]
   intro a ha; simp [body] at ha; let ⟨x, ha1, ha2⟩ := ha

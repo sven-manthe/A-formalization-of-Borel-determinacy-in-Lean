@@ -46,7 +46,7 @@ lemma bodySystem_take' (x : BodySystemObj T) (h : m ≤ k) :
   }
   invFun x := ⟨fun n ↦ (x.res (n + 1)).val.get ⟨n, by simp⟩, by
     intro y h; suffices y = (x.res y.length).val by simp only [this, resEq_mem]
-    apply List.ext_getElem (by simp); intro n hn; simp only [resEq_len, max_self] at hn
+    apply List.ext_getElem (by simp); intro n hn
     rw [principalOpen_index] at h
     simp [hn]; rw [← h _ hn]
     apply List.IsPrefix.getElem; rw [bodySystem_con']; omega⟩

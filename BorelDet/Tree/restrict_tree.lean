@@ -17,8 +17,7 @@ variable {S T U : Trees} {k m n : ℕ}
     toFun := fun x ↦ ⟨(f ⟨x.val, x.prop.1⟩).val, by
       constructor <;> simp only [SetLike.coe_mem, LenHom.h_length_simp, x.prop.2]⟩
     monotone' := fun _ _ h ↦ f.monotone' h
-    h_length := by
-      simp only [LenHom.h_length_simp, Subtype.forall, implies_true, forall_const]
+    h_length := by simp_rw [LenHom.h_length_simp, implies_true]
   }
   map_id _ := rfl
   map_comp _ _ := rfl

@@ -130,7 +130,7 @@ def Fixing k {T U : PTrees} (f : T ⟶ U) :=
 lemma fixing_comp k {T U V : PTrees} (f : T ⟶ U) (g : U ⟶ V)
   (hf : Fixing k f) (hg : Fixing k g) : Fixing k (f ≫ g) := by
   have _ := hf.1; have _ := hg.1
-  use (by simp [Tree.Fixing]; infer_instance)
+  use (by simp_rw [comp_covering_toHom]; infer_instance)
   intros; ext; simp [hf.2, hg.2]
 lemma fixing_snd_mon {k m} (hm : k ≤ m) {T U : PTrees} (f : T ⟶ U)
   (h : Fixing m f) (p : Player) :

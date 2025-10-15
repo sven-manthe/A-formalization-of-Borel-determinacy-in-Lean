@@ -56,8 +56,8 @@ lemma Cardinal.choose_injection {α β : Type u} (f : α → Set β) (h : ∀ a,
   let ⟨wo, hwo, hwol⟩ := Cardinal.ord_eq α
   let recg (a : α) (recg : (b : α) → wo b a → β) : β :=
     (Set.nonempty_iff_ne_empty.mpr fun hf ↦
-      not_le_of_lt (lt_of_lt_of_le (lt_of_le_of_lt
-      (Cardinal.mk_le_of_surjective Set.surjective_onto_range :
+      not_le_of_gt (lt_of_lt_of_le (lt_of_le_of_lt
+      (Cardinal.mk_le_of_surjective Set.rangeFactorization_surjective :
         #(Set.range (uncurryProp recg)) ≤ _)
       (Cardinal.card_typein_lt wo a hwol)) (h a))
       (Cardinal.mk_le_mk_of_subset (Set.diff_eq_empty.mp hf))).some

@@ -74,8 +74,7 @@ lemma take_le {h} : H.take n h ≤ H := by
   (conv => lhs; dsimp [LE.le]); simp [PreLift.ext_iff]
 
 def ConShort := H.x.val[2 * k]'H.hlvl = H.liftShort.val[2 * k].1
-@[simp] lemma conShort_iff_take h : (H.take n h).ConShort ↔ H.ConShort := by
-  simp [ConShort, List.getElem_take']
+@[simp] lemma conShort_iff_take h : (H.take n h).ConShort ↔ H.ConShort := by simp [ConShort]
 def ConLong := H.x.val.drop (2 * k + 1) ∈ H.game.tree
 lemma conLong_take {h} (h' : H.ConLong) : (H.take n h).ConLong := by
   simpa [PreLift.ConLong, List.drop_take] using take_mem ⟨_, h'⟩
@@ -95,7 +94,7 @@ def Lost' := G.WonPosition H.x.val (Player.one.residual H.x.val)
 def Losable := H.ConLong ∧ WinningPrefix H.game Player.one (H.x.val.drop (2 * k + 1))
 def Winnable := ¬ WinningPrefix H.game Player.one (H.x.val.drop (2 * k + 1))
 lemma Winnable.conLong (h : H.Winnable) : H.ConLong := byContradiction fun h' ↦
-  h (winningPrefix_of_not_mem H.game Player.one h')
+  h (winningPrefix_of_notMem H.game Player.one h')
 
 attribute [simp] h'lvl
 @[simp] lemma liftShort_val_map :
@@ -119,8 +118,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn = H.take (min m n) (by simp [*]) := by
   ext1; simp
-@[simp] lemma liftNode_take h : (H.take n h).liftNode = H.liftNode := by
-  simp [liftNode, List.getElem_take']
+@[simp] lemma liftNode_take h : (H.take n h).liftNode = H.liftNode := by simp [liftNode]
 lemma eq_take_of_le {p q : Lift hyp} (h : p ≤ q) :
   q.take p.x.val.length (by simp) = p := Lift.ext h
 lemma take_le {h} : H.take n h ≤ H := H.toPreLift.take_le (h := by omega)
@@ -145,7 +143,7 @@ def liftMediumVal : List A' := H.liftShort.val ++ [⟨H.liftNode, H.liftTree⟩]
   simp [liftMediumVal]
 @[simp] lemma liftMediumVal_map : H.liftMediumVal.map Prod.fst = H.x.val.take (2 * k + 2) := by
   rw [liftMediumVal, List.map_append, H.liftShort_val_map, ← H.x.val.take_concat_get' (2 * k + 1)]
-  dsimp [Lift.liftNode]
+  dsimp [Lift.liftNode]; exact H.h'lvl
 
 def liftVal := H.liftMediumVal ++
   (H.x.val.drop (2 * k + 2)).zipInitsMap (fun a y ↦ ⟨a, subAt H.liftTree y⟩)
@@ -199,7 +197,7 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
   hlvl := by simp
 @[simp] lemma extensionPreLift_take :
   (H.extensionPreLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toPreLift := by
-  ext1 <;> simp [extensionPreLift, extensionMap, ← take_apply π]
+  ext1 <;> simp [extensionPreLift, extensionMap]
 @[simp] lemma extensionPreLift_liftShort : (H.extensionPreLift hp R).liftShort = H.liftShort := by
   rw [← extensionPreLift_take, PreLift.liftShort_take]
 @[simp] lemma extensionPreLift_game : (H.extensionPreLift hp R).game = H.game := by
@@ -207,7 +205,7 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
 @[simps! toPreLift] def extensionLift : Lift hyp where
   toPreLift := H.extensionPreLift hp R
   h'lvl := by simp
-  conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort
+  conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort; exact H.hlvl
 @[simp] lemma extensionLift_take :
   (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toLift := by
   ext1; apply extensionPreLift_take

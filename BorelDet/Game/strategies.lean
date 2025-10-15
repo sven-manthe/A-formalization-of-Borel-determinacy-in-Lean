@@ -138,7 +138,7 @@ lemma PreStrategy.choose_sub {S : PreStrategy T p} (h : S.IsQuasi) :
 lemma QuasiStrategy.subtree_isPruned (S : QuasiStrategy T p) (hT : IsPruned T) :
   IsPruned S.1.subtree := by
   intro ⟨x, ⟨hx, h⟩⟩; by_cases hp : IsPosition x p
-  · use (S.2 ⟨x, hx⟩ hp).some.val; rw [S.1.subtree_compatible_iff]
+  · use (S.2 ⟨x, hx⟩ hp).some.val; rw [S.1.subtree_compatible_iff _ hp]
     exact ⟨_, (S.2 ⟨x, hx⟩ hp).some_mem⟩
   · obtain ⟨a, ha⟩ := hT ⟨_, hx⟩
     exact ⟨a, (S.1.subtree_fair ⟨x, ⟨hx, h⟩⟩ (by synth_isPosition)).mpr ha⟩

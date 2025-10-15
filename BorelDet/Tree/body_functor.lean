@@ -44,8 +44,8 @@ def bodyMap (f : OrderHom S T) (a : bodyDom f) : body T :=
     have ⟨hx, hl⟩ := (bodyMap_exists f a y.length).choose_spec
     apply List.ext_getElem
     · simp [bodyMap_choose_spec, hl.le]
-    · intro n hn _; simp at hn; simp [hn, bodyMap_choose_spec]
-      rw [(bodyMap_pspec f a hx (lt_trans hn hl))]; rfl⟩
+    · intro n hn _; simp [bodyMap_choose_spec]
+      rw [(bodyMap_pspec f a hx (lt_trans (by simpa using hn) hl))]; rfl⟩
 lemma bodyMap_spec (f : OrderHom S T) (a : bodyDom f) {x}
   (hx : (a : Stream' A) ∈ principalOpen x) (hlx : n < (f ⟨x, a.prop.1 x hx⟩).val.length) :
   (bodyMap f a).val.get n = (f ⟨x, a.prop.1 x hx⟩).val[n] := bodyMap_pspec f a hx hlx
@@ -88,13 +88,14 @@ lemma LenHom.bodyMap_spec_res (f : S ⟶ T) (a : body S.2) n :
   bodyMap_spec_res_lt f a (Nat.lt_succ_self n)
 /-- the body of a tree is functorial -/
 @[simps! obj] def bodyFunctor : Trees ⥤ Type* where
-  toPrefunctor := bodyPre
+  obj S := body S.2
+  map f a := bodyPre.map f a
   map_id _ := by
     ext; simp [LenHom.bodyMap_spec_res]
   map_comp f g := by
     ext x n; simp [LenHom.bodyMap_spec_res]
     congr!; ext1; apply List.ext_getElem (by simp); intro m hm
-    simp [hm, LenHom.bodyMap_spec_res_lt _ _ hm]
+    simp [LenHom.bodyMap_spec_res_lt _ _ hm]
 instance bodySpace : TopologicalSpace (Tree.bodyFunctor.obj S) := by
   dsimp; infer_instance
 lemma bodyMap_spec' (f : S ⟶ T) (a : body S.2)

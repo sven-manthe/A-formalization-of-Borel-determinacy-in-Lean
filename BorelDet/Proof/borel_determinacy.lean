@@ -115,8 +115,7 @@ def unravelLim : Limits.Cone (unravelFunctor G k) :=
 lemma unravelLim_fixing : Covering.Fixing k ((unravelLim G k).π.app ⟨0⟩) :=
   limCone_fixing (unravelFunctor_fixing G k) 0
 
-set_option maxHeartbeats 400000 in
-set_option synthInstance.maxHeartbeats 400000 in
+set_option synthInstance.maxHeartbeats 40000 in --alternated between being required and not with lean versions
 /-- the σ-algebra of universally unravelable sets -/
 def unravelableAsMeasurable : MeasurableSpace (Tree.body T.1.2) where
   MeasurableSet' := UniversallyUnravelable T
@@ -127,7 +126,7 @@ def unravelableAsMeasurable : MeasurableSpace (Tree.body T.1.2) where
     let G0: PartiallyUnravelled 0 := {
       carrier := T'
       sets := fun n ↦ ⟨(Tree.bodyFunctor.map f.toHom)⁻¹' (W n), unravelable_preimage _ _ (hW n)⟩
-      unrav := by simp --since mathlib update, inference of DiscreteTopology here is slow
+      unrav := by simp
     }
     let F := unravelFunctor G0 k
     let G := (unravelLim G0 k).pt; let π := (unravelLim G0 k).π

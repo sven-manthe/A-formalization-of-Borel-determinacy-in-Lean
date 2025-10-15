@@ -79,6 +79,7 @@ variable (x y : List α) (a : α) (f : α → List α → β)
 def zipInitsMap := x.zipWith f x.inits.tail
 @[simp] lemma zipInitsMap_nil : [].zipInitsMap f = [] := by simp [zipInitsMap]
 @[simp] lemma zipInitsMap_singleton : [a].zipInitsMap f = [f a [a]] := rfl
+set_option linter.unusedSimpArgs false in --TODO report false positive
 lemma zipInitsMap_append : (x ++ y).zipInitsMap f
   = x.zipInitsMap f ++ y.zipInitsMap (fun a z ↦ f a (x ++ z)) := by
   have h : ¬ x.inits.isEmpty := by rw [List.isEmpty_iff_length_eq_zero]; simp
@@ -103,6 +104,6 @@ lemma zipInitsMap_map (g : β → γ) :
   simp [zipInitsMap, ← map_zipWith, zipWith_left]
 @[simp] lemma zipInitsMap_get n (h : n < (x.zipInitsMap f).length) : (x.zipInitsMap f)[n]
   = f (x[n]'(by simpa using h)) (x.take (n + 1)) := by
-  simp [zipInitsMap, tail_getElem]
+  simp [zipInitsMap]
 
 end List

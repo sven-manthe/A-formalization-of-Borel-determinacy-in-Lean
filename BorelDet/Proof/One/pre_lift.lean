@@ -101,7 +101,7 @@ lemma liftVal_very_short (h : H.x.val.length = 2 * k + 1) : H.liftVal = H.liftVe
   H.liftVal.take (α := no_index _) n = pInvTreeHom_map hyp (H.x.val.take n) := by
   have : n = min n (2 * k + 1) := by omega
   rw [this, ← List.take_take, liftVal_take_veryShort]
-  simp [liftVeryShort, pInvTreeHom_map, List.take_append_eq_append_take,
+  simp [liftVeryShort, pInvTreeHom_map, List.take_append,
       List.zipInitsMap_take, List.take_take, h, ← this]
 -- for u drop (2 * k + 1)
 def PreWonPos (u : List A) := LosingCondition H.liftShort.val (by simp) ∧
@@ -132,7 +132,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
   · have : n = 2 * k + 1 := by synth_isPosition
     rw [List.take_append_of_le_length (by simp [this])]; simp [this]
   · synth_isPosition
-  · simp [Lift.liftVal, List.take_append_eq_append_take, List.drop_take, List.zipInitsMap_take]
+  · simp [List.take_append, List.drop_take, List.zipInitsMap_take]
     have := H.hlvl; synth_isPosition
 @[simp] lemma preWonPos_take h u :
   (H.take n h).PreWonPos u ↔ H.PreWonPos u := by simp [PreWonPos, List.take_take, h]
@@ -159,7 +159,7 @@ end Lift
 variable (hyp) in
 @[ext (flat := false)] structure Lift' extends Lift hyp where
   con : toLift.Con
-@[simps] instance : Preorder (Lift' hyp) where
+instance : Preorder (Lift' hyp) where
   le p q := p.toLift ≤ q.toLift
   le_refl _ := le_rfl (α := Lift hyp)
   le_trans _ _ _ := le_trans (α := Lift hyp)
@@ -187,7 +187,7 @@ lemma conLong : H.x.val.drop (2 * k + 2) ∈ getTree H.liftShort.val := by
   con := H.con.take _ _
 attribute [simp_lengths] take_toLift
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
-  ext1; apply Lift.take_of_length_le <;> omega
+  ext1; apply Lift.take_of_length_le; omega
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn = H.take (min m n) (by simp [*]) := by
@@ -214,7 +214,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
           · conv => lhs; unfold Lift.liftVal
             simp [hn]
             rw [List.getElem_append_right (by synth_isPosition), getTree_eq' _ ih]
-            simp (disch := omega) [List.take_take, hn, hnat]; congr 2
+            simp (disch := omega) [List.take_take, hnat]; congr 2
             rw [← List.take_drop, List.getElem_drop', List.take_concat_get']
 @[simp] lemma lift_lift : π H.lift = H.x := tree_ext H.liftVal_lift
 attribute [simp_lengths] lift_coe
@@ -238,7 +238,7 @@ lemma extend_take h S : (H.take n h).extend S =
   (H.extend (cast (by simp [List.take_take, h]) S)).take n h := by
   ext1; rfl; simp [extend]; symm; apply cast_subtree (by simp [List.take_take, h]) rfl
 @[simp] lemma wonPos_take h : (H.take n h).WonPos = H.WonPos := by
-  ext; simp [WonPos, extend_take, h]
+  ext; simp [WonPos, extend_take]
   generalize_proofs pf; rw [(cast_bijective pf).surjective.exists]
 @[simp] lemma game_take h : (H.take n h).game = H.game := by
   ext1 <;> simp [game, List.take_take, h]

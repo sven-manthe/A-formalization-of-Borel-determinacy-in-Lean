@@ -112,7 +112,7 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Losable := ih''.2
         simp at ih'
         have hm := H.x_mem_tree' (by as_aux_lemma => omega) (by as_aux_lemma => synth_isPosition)
-        simp [hn, extension, Lift.extension, hW, ih', Ht] at hm
+        simp [extension, Lift.extension, hW, ih', Ht] at hm
         generalize_proofs _ _ hL hp at hm
         convert (hL.extension_losable hp).1; ext1
         · exact hm
@@ -120,7 +120,7 @@ lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
       · have hW : (Ht.lift (by dsimp [Ht]; synth_isPosition)).Winnable :=
           fun hW ↦ ih'' ⟨by dsimp [Ht]; synth_isPosition, ⟨ih, hW⟩⟩
         have hm := H.x_mem_tree' (by as_aux_lemma => omega) (by as_aux_lemma => synth_isPosition)
-        simp [hn, extension] at hm
+        simp [extension] at hm
         rw [Lift.extension_winnable _ _ _ hW] at hm
         convert hW.extension_conLong (by as_aux_lemma => dsimp [Ht] at *; synth_isPosition)
           ((strategyEquivSystem H.R).str _)
@@ -152,6 +152,7 @@ lemma x_mem_tree_short' h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) P
     rw [← List.take_concat_get', hx, ExtensionsAt.val', List.map_append]; congr
     · show _ = (π _).val; simp
     · simp [ResStrategy.fromMap]; rfl
+    · synth_isPosition
   · ext1
     simp [← List.take_append_getElem, ExtensionsAt.val']; congr <;> simp [PreLift.liftShort];
     · rw [ExtensionsAt.val'_take_of_eq] <;> simp
@@ -162,7 +163,8 @@ lemma x_mem_tree_short h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Pl
   have h := congr_arg (fun x ↦ x.val[n]?) (H.x_mem_tree_short' h' h hp)
   simp at h; apply Option.some_injective
   erw [← List.getElem?_eq_getElem, h, List.getElem?_eq_getElem]
-  erw [ExtensionsAt.val'_get_last_of_eq _ (by simp; omega)]
+  erw [ExtensionsAt.val'_get_last_of_eq _ (by synth_isPosition)]
+  synth_isPosition
 
 def WinnableOrLost := ∃ h, (H.lift h).Winnable ∨ (H.lift h).Lost
 variable (hWL : H.WinnableOrLost)
@@ -247,7 +249,7 @@ lemma lLift_mem_tree h (hL : (H.lift h).Lost) : hL.toLLift'.liftVal ∈ H.R.pre.
     apply extensionsAt_eq_of_lost (x := Tree.take n hL.toLLift'.lift) hL.toLLift'.lift
       (List.take_prefix _ _) (by as_aux_lemma => synth_isPosition)
     · unfold Lift.Lost' at hL'; convert hL' using 2
-      · simp [List.take_take]
+      · simp
       · synth_isPosition
     · replace hL := hL.1; unfold Lift.Lost' at hL; convert hL using 1
       · simp
