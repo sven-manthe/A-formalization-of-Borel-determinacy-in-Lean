@@ -1,5 +1,10 @@
 import BorelDet.Applications.Meager
 import BorelDet.Proof.borel_determinacy
+import Mathlib.Topology.MetricSpace.Bounded
+import Mathlib.Analysis.SpecificLimits.Basic
+import Mathlib.Topology.Bornology.Basic
+import Mathlib.Order.Zorn
+import Mathlib.Topology.Baire.Lemmas
 
 open GaleStewartGame
 open Descriptive
@@ -51,26 +56,2068 @@ variable {p : Player} (S : Strategy (chainTree V) p)
 --TODO cases fails in synth_isPosition if target depends?
 def restrict : Strategy (chainTree W) p := fun x hp ↦
     shrink' hWV hW (S (extend hWV x) (by synth_isPosition))
---TODO eigene Züge wie mit alter Strategie, choose vor Zügen des Gegners
-def restrict_tree (x : S.pre.subtree) : (restrict hWV hW S).pre.subtree :=
-    List.reverseRecOn x.val ⟨[], by simp [nil_mem_chainTree]⟩ fun xs A ys ↦ --TODO need to distingush parity
-        ⟨chainTree.concat W (PreStrategy.subtree_incl _ ys) (choose_pair hW A) (by
-        simp
-        have : xs ++ [A] ∈ S.pre.subtree := by sorry --TODO need tree reverseRecOn here´
-        have h := this.1
-        rw [concat_mem_chainTree] at h
-        intro _; apply (choose_pair_sub hW A).trans
-        --TODO need ys restrict to xs here
-        sorry), sorry⟩
-lemma restrict_winning (h : S.pre.IsWinning (G := interGame V PO)) :
-    (restrict hWV hW S).pre.IsWinning (G := interGame W PO) := by
-    sorry --TODO restrict body sub
+
+/-!
+### Restricting strategies to a basis (WIP)
+
+`restrict` shrinks each move selected by `S` into the subfamily `W` using `hW`.
+
+However, a blanket lemma of the form
+
+`S.pre.IsWinning (G := interGame V PO) → (restrict ... S).pre.IsWinning (G := interGame W PO)`
+
+is **not** available in this generality:
+
+- `restrict` changes the actual moves (replacing `A` by a chosen `B ⊆ A`), so plays compatible
+  with `restrict` need not be compatible with `S.pre`.
+- For Banach–Mazur style applications, the correct transfer statements are typically formulated
+  either for particular payoff predicates, or as existence statements about winning strategies
+  (basis-invariance), not as “this specific restricted strategy is winning”.
+
+See classical references such as Oxtoby (1957) and Telgársky (1987) for the intended results.
+-/
+
 end restrict
 
+namespace BanachMazur
+
+open Topology
+
+variable {X : Type*} [TopologicalSpace X]
+
+/-- The usual Banach–Mazur game data: a family `W` of nonempty open sets that refines every nonempty
+open set. -/
+structure Family (X : Type*) [TopologicalSpace X] where
+  W : Set (Set X)
+  isOpen_mem : ∀ {U}, U ∈ W → IsOpen U
+  nonempty_mem : ∀ {U}, U ∈ W → U.Nonempty
+  nonempty : ∃ U, U ∈ W
+  refine_open : ∀ {U}, IsOpen U → U.Nonempty → ∃ V, V ∈ W ∧ V ⊆ U
+
+namespace Family
+
+variable (F : Family X)
+
+noncomputable def default : F.W :=
+  ⟨F.nonempty.choose, F.nonempty.choose_spec⟩
+
+noncomputable def chooseIn (U : Set X) (hUo : IsOpen U) (hUne : U.Nonempty) : F.W :=
+  ⟨(F.refine_open (U := U) hUo hUne).choose, (F.refine_open (U := U) hUo hUne).choose_spec.1⟩
+
+lemma chooseIn_subset (U : Set X) (hUo : IsOpen U) (hUne : U.Nonempty) :
+    (F.chooseIn U hUo hUne : Set X) ⊆ U :=
+  (F.refine_open (U := U) hUo hUne).choose_spec.2
+
+end Family
+
+/-- Player I wins iff `A` meets the intersection of the played sets. -/
+def payoffHits (A : Set X) : Set (Set X) := {s | (A ∩ s).Nonempty}
+
+def game (F : Family X) (A : Set X) : Game F.W :=
+  interGame (X := X) (V := F.W) (PO := payoffHits (X := X) A)
+
+section Meagre
+
+variable (F : Family X) {A : Set X}
+
+noncomputable def preAvoidMeagre (hA : IsMeagre A) : PreStrategy (chainTree F.W) Player.one := by
+  classical
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  -- On Player II positions, allow all moves staying inside the current open set and outside
+  -- `closure (N k)`, where `k` is the move number of Player II (computed from the length).
+  refine fun x hp => by
+    have hxne : x.val ≠ [] := by
+      intro h0
+      have : x.val.length % 2 = 0 := by simp [h0]
+      -- Contradiction: Player II moves on odd positions.
+      have : x.val.length % 2 = 1 := by simpa [IsPosition, Player.toNat] using hp
+      omega
+    let Uel : F.W := x.val.getLast hxne
+    let U : Set X := (Uel : Set X)
+    let k : ℕ := x.val.length / 2
+    exact {a | (a.val : Set X) ⊆ U ∩ (closure (N k : Set X))ᶜ}
+
+noncomputable def quasiAvoidMeagre (hA : IsMeagre A) : QuasiStrategy (chainTree F.W) Player.one := by
+  classical
+  let P : PreStrategy (chainTree F.W) Player.one := preAvoidMeagre (F := F) (A := A) hA
+  refine ⟨P, ?_⟩
+  intro x hp
+  -- Produce one legal move using the basis property inside `U ∩ (closure (N k))ᶜ`.
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  have hxne : x.val ≠ [] := by
+    intro h0
+    have : x.val.length % 2 = 0 := by simp [h0]
+    have : x.val.length % 2 = 1 := by simpa [IsPosition, Player.toNat] using hp
+    omega
+  let Uel : F.W := x.val.getLast hxne
+  let U : Set X := (Uel : Set X)
+  have hUo : IsOpen U := F.isOpen_mem (U := U) Uel.property
+  have hUne : U.Nonempty := F.nonempty_mem (U := U) Uel.property
+  let k : ℕ := x.val.length / 2
+  have hDense : Dense (closure (N k : Set X))ᶜ := by
+    have hNW : IsNowhereDense (closure (N k : Set X)) := (N k).2.closure
+    have : IsOpen (closure (N k : Set X))ᶜ ∧ Dense (closure (N k : Set X))ᶜ := by
+      simpa using (isClosed_isNowhereDense_iff_compl (s := closure (N k : Set X))).1
+        ⟨isClosed_closure, hNW⟩
+    exact this.2
+  have hU'ne : (U ∩ (closure (N k : Set X))ᶜ).Nonempty :=
+    by simpa [Set.inter_comm] using hDense.inter_open_nonempty U hUo hUne
+  -- Choose a move in `F.W` refining that open set.
+  let Vset : Set X := (F.refine_open (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose
+  have hVmem : Vset ∈ F.W := (F.refine_open (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose_spec.1
+  have hVsub : Vset ⊆ U ∩ (closure (N k : Set X))ᶜ := (F.refine_open (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose_spec.2
+  let V : F.W := ⟨Vset, hVmem⟩
+  -- Show it is a legal extension in `chainTree`.
+  have hVsubU : (V : Set X) ⊆ U := fun z hz => (hVsub hz).1
+  have hExt : x.val ++ [V] ∈ chainTree F.W := by
+    rw [concat_mem_chainTree (V := F.W)]
+    refine ⟨x.prop, fun _ => ?_⟩
+    exact hVsubU
+  refine ⟨⟨V, hExt⟩, ?_⟩
+  -- Membership in the allowed set.
+  exact hVsub
+
+theorem existsWinning_one_of_isMeagre (A : Set X) (hA : IsMeagre A) :
+    (game (X := X) F A).ExistsWinning Player.one := by
+  classical
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  have hAeq : A = ⋃ n, (N n : Set X) :=
+    Classical.choose_spec (hA.eq_countable_union_isNowhereDense)
+  -- It is easier to construct a winning *quasistrategy* and then choose a deterministic strategy.
+  -- `ExistsWinning` is equivalent to the existence of a winning quasistrategy.
+  refine (GaleStewartGame.Game.existsWinning_iff_quasi (G := game (X := X) F A) (p := Player.one)).2 ?_
+  refine ⟨quasiAvoidMeagre (F := F) (A := A) hA, ?_⟩
+  intro a ha
+  -- Player II wins iff the intersection does *not* meet `A`.
+  -- (The goal is expressed on streams via `Subtype.val ''`.)
+  simp [game, interGame, payoffHits, Player.payoff]
+  constructor
+  · -- Any play compatible with the strategy is a valid play in the underlying game tree.
+    exact Descriptive.Tree.body_mono (PreStrategy.subtree_sub (S := (quasiAvoidMeagre (F := F) (A := A) hA).1) ) ha
+  · intro haTree hx
+    rcases hx with ⟨x, hxA, hxI⟩
+    -- Pick the index `k` with `x ∈ N k`.
+    have hxA' : x ∈ ⋃ n, (N n : Set X) := by simpa [hAeq] using hxA
+    rcases Set.mem_iUnion.mp hxA' with ⟨k, hxNk⟩
+    have hxcl : x ∈ closure (N k : Set X) := subset_closure hxNk
+    -- Show the intersection is contained in the (2k+1)-th played set, which the strategy ensured
+    -- lies inside the complement of `closure (N k)`.
+    have hxInMove : x ∈ (a.get (2 * k + 1) : Set X) := by
+      have hx' := (Set.mem_iInter.mp hxI) (2 * k + 1)
+      simpa using hx'
+    -- Extract compatibility at the Player II move `2k+1` to show it avoids `closure (N k)`.
+    have hprefix_mem :
+        a.take (2 * k + 1) ∈ (quasiAvoidMeagre (F := F) (A := A) hA).1.subtree := by
+      exact Descriptive.Tree.take_mem_body ha (2 * k + 1)
+    let preNode : (quasiAvoidMeagre (F := F) (A := A) hA).1.subtree := ⟨_, hprefix_mem⟩
+    have hpos : IsPosition preNode.val Player.one := by
+      have : (2 * k + 1) % 2 = 1 := by omega
+      simp [IsPosition, Player.toNat, preNode, this]
+    have hnext_mem :
+        preNode.val ++ [a.get (2 * k + 1)] ∈ (quasiAvoidMeagre (F := F) (A := A) hA).1.subtree := by
+      have ht : a.take (2 * k + 2) ∈ (quasiAvoidMeagre (F := F) (A := A) hA).1.subtree :=
+        Descriptive.Tree.take_mem_body ha (2 * k + 2)
+      have htake' : a.take (2 * k + 2) = preNode.val ++ [a.get (2 * k + 1)] := by
+        have hn : (2 * k + 1) + 1 = 2 * k + 2 := by omega
+        simp [preNode, hn]
+      simpa [htake'] using ht
+    have hcompat :
+        ⟨a.get (2 * k + 1), by exact hnext_mem.1⟩
+          ∈ (preAvoidMeagre (F := F) (A := A) hA)
+              ((PreStrategy.subtree_incl _ preNode)) (by simpa using hpos) := by
+      exact (preAvoidMeagre (F := F) (A := A) hA).subtree_compatible preNode (by simpa using hpos) hnext_mem
+    have hAvoid : (a.get (2 * k + 1) : Set X) ⊆ (closure (N k : Set X))ᶜ := by
+      intro z hz
+      have hz' : z ∈ (closure (N (preNode.val.length / 2) : Set X))ᶜ := (hcompat hz).2
+      have hk : preNode.val.length / 2 = k := by
+        simp [preNode]
+      simpa [hk] using hz'
+    have : x ∈ (closure (N k : Set X))ᶜ := hAvoid hxInMove
+    exact this hxcl
+
+end Meagre
+
+/-- A Banach–Mazur family in the classical sense: members need not be open, but must have nonempty
+interior, and the family refines every nonempty open set. This matches the setup in standard
+references (e.g. Oxtoby 1957, Telgársky 1987). -/
+structure FamilyBM (X : Type*) [TopologicalSpace X] where
+  W : Set (Set X)
+  interior_nonempty_mem : ∀ {U}, U ∈ W → (interior U).Nonempty
+  nonempty : ∃ U, U ∈ W
+  refine_open : ∀ {U}, IsOpen U → U.Nonempty → ∃ V, V ∈ W ∧ V ⊆ U
+
+namespace FamilyBM
+
+variable {X : Type*} [TopologicalSpace X] (F : FamilyBM X)
+
+def LocalBasis : Prop :=
+  ∀ x U, IsOpen U → x ∈ U → ∃ V, V ∈ F.W ∧ x ∈ V ∧ V ⊆ U
+
+lemma nonempty_mem {U : Set X} (hU : U ∈ F.W) : U.Nonempty := by
+  rcases F.interior_nonempty_mem (U := U) hU with ⟨x, hx⟩
+  exact ⟨x, interior_subset hx⟩
+
+end FamilyBM
+
+def gameBM {X : Type*} [TopologicalSpace X] (F : FamilyBM X) (A : Set X) : Game F.W :=
+  interGame (X := X) (V := F.W) (PO := payoffHits (X := X) A)
+
+section OpenFamilyBM
+
+variable {X : Type*} [TopologicalSpace X] [Nonempty X]
+
+noncomputable def openFamilyBM : FamilyBM X where
+  W := {U : Set X | IsOpen U ∧ U.Nonempty}
+  interior_nonempty_mem := by
+    intro U hU
+    simpa [hU.1.interior_eq] using hU.2
+  nonempty := ⟨Set.univ, isOpen_univ, Set.univ_nonempty⟩
+  refine_open := by
+    intro U hUo hUne
+    exact ⟨U, ⟨hUo, hUne⟩, subset_rfl⟩
+
+end OpenFamilyBM
+
+lemma openFamilyBM_localBasis (X : Type*) [TopologicalSpace X] [Nonempty X] :
+    (openFamilyBM (X := X)).LocalBasis := by
+  intro x U hUo hxU
+  refine ⟨U, ?_, hxU, subset_rfl⟩
+  exact ⟨hUo, ⟨x, hxU⟩⟩
+
+section ZornHelpers
+
+open Set
+
+variable {X : Type*} [TopologicalSpace X]
+
+/-- `s` is dense within `U0` if every nonempty open `O ⊆ U0` meets `s`. -/
+def DenseWithin (s U0 : Set X) : Prop :=
+  ∀ O, IsOpen O → O ⊆ U0 → O.Nonempty → (O ∩ s).Nonempty
+
+/-- Nonempty open subsets of an ambient set `U0`. -/
+structure OpenSub (U0 : Set X) where
+  set : Set X
+  isOpen : IsOpen set
+  nonempty : set.Nonempty
+  subset : set ⊆ U0
+
+instance (U0 : Set X) : SetLike (OpenSub U0) X where
+  coe := OpenSub.set
+  coe_injective' := by
+    intro U V h
+    cases U
+    cases V
+    cases h
+    rfl
+
+@[simp] lemma OpenSub.coe_set {U0 : Set X} (U : OpenSub U0) : (U : Set X) = U.set := rfl
+
+lemma OpenSub.nonempty_mem {U0 : Set X} (U : OpenSub U0) : (U : Set X).Nonempty := U.nonempty
+
+def OpenSub.restrict {U0 U : Set X} (h : U ⊆ U0) (V : OpenSub U) : OpenSub U0 :=
+  ⟨V.set, V.isOpen, V.nonempty, V.subset.trans h⟩
+
+lemma exists_pairwiseDisjoint_image_denseWithin
+    {U0 : Set X} (hU0 : IsOpen U0)
+    (f : OpenSub U0 → OpenSub U0)
+    (hf : ∀ U, (f U).set ⊆ U.set) :
+    ∃ 𝒰 : Set (OpenSub U0),
+      𝒰.Pairwise (fun U V => Disjoint (f U).set (f V).set) ∧
+      DenseWithin (⋃ U ∈ 𝒰, (f U).set) U0 := by
+  classical
+  let S : Set (Set (OpenSub U0)) :=
+    {A | A.Pairwise (fun U V => Disjoint (f U).set (f V).set)}
+  have hchain :
+      ∀ c ⊆ S, IsChain (· ⊆ ·) c →
+        ∃ ub ∈ S, ∀ s ∈ c, s ⊆ ub := by
+    intro c hcS hc
+    refine ⟨⋃₀ c, ?_, ?_⟩
+    · -- pairwise disjointness is preserved along chains
+      have hub :
+          (⋃₀ c).Pairwise (fun U V => Disjoint (f U).set (f V).set) := by
+        intro U hU V hV hUV
+        rcases Set.mem_sUnion.mp hU with ⟨A, hAc, hUA⟩
+        rcases Set.mem_sUnion.mp hV with ⟨B, hBc, hVB⟩
+        have hAB : A ⊆ B ∨ B ⊆ A := hc.total hAc hBc
+        cases hAB with
+        | inl hAB =>
+            have hpairB :
+                B.Pairwise (fun U V => Disjoint (f U).set (f V).set) := by
+              have : B ∈ S := hcS hBc
+              simpa [S] using this
+            exact hpairB (hAB hUA) hVB hUV
+        | inr hBA =>
+            have hpairA :
+                A.Pairwise (fun U V => Disjoint (f U).set (f V).set) := by
+              have : A ∈ S := hcS hAc
+              simpa [S] using this
+            exact hpairA hUA (hBA hVB) hUV
+      simpa [S] using hub
+    · intro s hs
+      exact Set.subset_sUnion_of_mem hs
+  rcases zorn_subset S hchain with ⟨M, hMmax⟩
+  have hMpair :
+      M.Pairwise (fun U V => Disjoint (f U).set (f V).set) := by
+    simpa [S] using hMmax.1
+  let Ubig : Set X := ⋃ U ∈ M, (f U).set
+  have hDense : DenseWithin Ubig U0 := by
+    intro O hOo hOsub hOne
+    by_contra hEmpty
+    have hDisj : Disjoint (O ∩ U0) Ubig := by
+      refine Set.disjoint_left.2 ?_
+      intro y hyO hyU
+      exact hEmpty ⟨y, hyO.1, hyU⟩
+    have hWopen : IsOpen (O ∩ U0) := hOo.inter hU0
+    have hWne : (O ∩ U0).Nonempty := by
+      rcases hOne with ⟨x, hx⟩
+      exact ⟨x, ⟨hx, hOsub hx⟩⟩
+    let W : OpenSub U0 :=
+      ⟨O ∩ U0, hWopen, hWne, by intro y hy; exact hy.2⟩
+    let M' : Set (OpenSub U0) := M ∪ {W}
+    have hM'S : M' ∈ S := by
+      have hpair :
+          M'.Pairwise (fun U V => Disjoint (f U).set (f V).set) := by
+        intro U hU V hV hUV
+        have hU' : U ∈ M ∨ U = W := by
+          rcases hU with hU | hU
+          · exact Or.inl hU
+          · exact Or.inr (by simpa [Set.mem_singleton_iff] using hU)
+        have hV' : V ∈ M ∨ V = W := by
+          rcases hV with hV | hV
+          · exact Or.inl hV
+          · exact Or.inr (by simpa [Set.mem_singleton_iff] using hV)
+        cases hU' with
+        | inl hUm =>
+            cases hV' with
+            | inl hVm =>
+                exact hMpair hUm hVm hUV
+            | inr hVw =>
+                subst hVw
+                have hsub : (f U).set ⊆ Ubig := by
+                  intro y hy
+                  exact Set.mem_iUnion₂.2 ⟨U, ⟨hUm, hy⟩⟩
+                have hsubW : (f W).set ⊆ W.set := hf W
+                refine Set.disjoint_left.2 ?_
+                intro y hyU hyW
+                have hyUbig : y ∈ Ubig := hsub hyU
+                have hyW' : y ∈ W.set := hsubW hyW
+                exact (Set.disjoint_left.1 hDisj) hyW' hyUbig
+        | inr hUw =>
+            subst hUw
+            cases hV' with
+            | inl hVm =>
+                have hsub : (f V).set ⊆ Ubig := by
+                  intro y hy
+                  exact Set.mem_iUnion₂.2 ⟨V, ⟨hVm, hy⟩⟩
+                have hsubW : (f W).set ⊆ W.set := hf W
+                refine Set.disjoint_left.2 ?_
+                intro y hyW hyV
+                have hyUbig : y ∈ Ubig := hsub hyV
+                have hyW' : y ∈ W.set := hsubW hyW
+                exact (Set.disjoint_left.1 hDisj) hyW' hyUbig
+            | inr hVw =>
+                subst hVw
+                exact (hUV rfl).elim
+      simpa [S] using hpair
+    have hMM' : M ⊆ M' := by intro U hU; exact Or.inl hU
+    have hM'sub : M' ⊆ M := hMmax.2 hM'S hMM'
+    have hEq : M' = M := by
+      exact Set.Subset.antisymm hM'sub hMM'
+    have hWmemM : W ∈ M := by
+      have : W ∈ M' := Or.inr (by simp)
+      simpa [hEq] using this
+    have hWnonempty : (f W).set.Nonempty := (f W).nonempty
+    rcases hWnonempty with ⟨y, hyfW⟩
+    have hyUbig : y ∈ Ubig := Set.mem_iUnion₂.2 ⟨W, ⟨hWmemM, hyfW⟩⟩
+    have hyW : y ∈ W.set := (hf W) hyfW
+    exact (Set.disjoint_left.1 hDisj) hyW hyUbig
+  refine ⟨M, hMpair, ?_⟩
+  simpa [Ubig] using hDense
+
+end ZornHelpers
+
+section MeagreBM
+
+variable {X : Type*} [TopologicalSpace X]
+variable (F : FamilyBM X) {A : Set X}
+
+noncomputable def preAvoidMeagreBM (hA : IsMeagre A) :
+    PreStrategy (chainTree F.W) Player.one := by
+  classical
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  refine fun x hp => by
+    have hxne : x.val ≠ [] := by
+      intro h0
+      have : x.val.length % 2 = 0 := by simp [h0]
+      have : x.val.length % 2 = 1 := by simpa [IsPosition, Player.toNat] using hp
+      omega
+    let Uel : F.W := x.val.getLast hxne
+    let U : Set X := interior (Uel : Set X)
+    let k : ℕ := x.val.length / 2
+    exact {a | (a.val : Set X) ⊆ U ∩ (closure (N k : Set X))ᶜ}
+
+noncomputable def quasiAvoidMeagreBM (hA : IsMeagre A) :
+    QuasiStrategy (chainTree F.W) Player.one := by
+  classical
+  let P : PreStrategy (chainTree F.W) Player.one := preAvoidMeagreBM (F := F) (A := A) hA
+  refine ⟨P, ?_⟩
+  intro x hp
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  have hxne : x.val ≠ [] := by
+    intro h0
+    have : x.val.length % 2 = 0 := by simp [h0]
+    have : x.val.length % 2 = 1 := by simpa [IsPosition, Player.toNat] using hp
+    omega
+  let Uel : F.W := x.val.getLast hxne
+  let U : Set X := interior (Uel : Set X)
+  have hUo : IsOpen U := isOpen_interior
+  have hUne : U.Nonempty := by
+    have : (interior (Uel : Set X)).Nonempty :=
+      F.interior_nonempty_mem (U := Uel) Uel.property
+    simpa using this
+  let k : ℕ := x.val.length / 2
+  have hDense : Dense (closure (N k : Set X))ᶜ := by
+    have hNW : IsNowhereDense (closure (N k : Set X)) := (N k).2.closure
+    have : IsOpen (closure (N k : Set X))ᶜ ∧ Dense (closure (N k : Set X))ᶜ := by
+      simpa using (isClosed_isNowhereDense_iff_compl (s := closure (N k : Set X))).1
+        ⟨isClosed_closure, hNW⟩
+    exact this.2
+  have hU'ne : (U ∩ (closure (N k : Set X))ᶜ).Nonempty :=
+    by simpa [Set.inter_comm] using hDense.inter_open_nonempty U hUo hUne
+  let Vset : Set X := (F.refine_open (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose
+  have hVmem : Vset ∈ F.W := (F.refine_open (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose_spec.1
+  have hVsub : Vset ⊆ U ∩ (closure (N k : Set X))ᶜ := (F.refine_open
+      (U := U ∩ (closure (N k : Set X))ᶜ)
+      (hUo.inter (isOpen_compl_iff.mpr isClosed_closure)) hU'ne).choose_spec.2
+  let V : F.W := ⟨Vset, hVmem⟩
+  have hVsubU : (V : Set X) ⊆ U := fun z hz => (hVsub hz).1
+  have hExt : x.val ++ [V] ∈ chainTree F.W := by
+    rw [concat_mem_chainTree (V := F.W)]
+    refine ⟨x.prop, fun _ => ?_⟩
+    have hcurr : U = interior (x.val.getLast hxne : Set X) := rfl
+    have hsub' : (V : Set X) ⊆ interior (x.val.getLast hxne : Set X) := by
+      simpa [hcurr] using hVsubU
+    exact fun y hy => interior_subset (hsub' hy)
+  refine ⟨⟨V, hExt⟩, ?_⟩
+  exact hVsub
+
+theorem existsWinning_one_of_isMeagre_BM (A : Set X) (hA : IsMeagre A) :
+    (gameBM (X := X) F A).ExistsWinning Player.one := by
+  classical
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hA.eq_countable_union_isNowhereDense)
+  have hAeq : A = ⋃ n, (N n : Set X) :=
+    Classical.choose_spec (hA.eq_countable_union_isNowhereDense)
+  refine (GaleStewartGame.Game.existsWinning_iff_quasi
+      (G := gameBM (X := X) F A) (p := Player.one)).2 ?_
+  refine ⟨quasiAvoidMeagreBM (F := F) (A := A) hA, ?_⟩
+  intro a ha
+  simp [gameBM, interGame, payoffHits, Player.payoff]
+  constructor
+  · exact Descriptive.Tree.body_mono
+      (PreStrategy.subtree_sub (S := (quasiAvoidMeagreBM (F := F) (A := A) hA).1)) ha
+  · intro haTree hx
+    rcases hx with ⟨x, hxA, hxI⟩
+    have hxA' : x ∈ ⋃ n, (N n : Set X) := by simpa [hAeq] using hxA
+    rcases Set.mem_iUnion.mp hxA' with ⟨k, hxNk⟩
+    have hxcl : x ∈ closure (N k : Set X) := subset_closure hxNk
+    have hxInMove : x ∈ (a.get (2 * k + 1) : Set X) := by
+      have hx' := (Set.mem_iInter.mp hxI) (2 * k + 1)
+      simpa using hx'
+    have hprefix_mem :
+        a.take (2 * k + 1) ∈ (quasiAvoidMeagreBM (F := F) (A := A) hA).1.subtree := by
+      exact Descriptive.Tree.take_mem_body ha (2 * k + 1)
+    let preNode : (quasiAvoidMeagreBM (F := F) (A := A) hA).1.subtree := ⟨_, hprefix_mem⟩
+    have hpos : IsPosition preNode.val Player.one := by
+      have : (2 * k + 1) % 2 = 1 := by omega
+      simp [IsPosition, Player.toNat, preNode, this]
+    have hnext_mem :
+        preNode.val ++ [a.get (2 * k + 1)] ∈ (quasiAvoidMeagreBM (F := F) (A := A) hA).1.subtree := by
+      have ht : a.take (2 * k + 2) ∈ (quasiAvoidMeagreBM (F := F) (A := A) hA).1.subtree :=
+        Descriptive.Tree.take_mem_body ha (2 * k + 2)
+      have htake' : a.take (2 * k + 2) = preNode.val ++ [a.get (2 * k + 1)] := by
+        have hn : (2 * k + 1) + 1 = 2 * k + 2 := by omega
+        simp [preNode, hn]
+      simpa [htake'] using ht
+    have hcompat :
+        ⟨a.get (2 * k + 1), by exact hnext_mem.1⟩
+          ∈ (preAvoidMeagreBM (F := F) (A := A) hA)
+              ((PreStrategy.subtree_incl _ preNode)) (by simpa using hpos) := by
+      exact (preAvoidMeagreBM (F := F) (A := A) hA).subtree_compatible preNode
+        (by simpa using hpos) hnext_mem
+    have hAvoid : (a.get (2 * k + 1) : Set X) ⊆ (closure (N k : Set X))ᶜ := by
+      intro z hz
+      have hz' : z ∈ (closure (N (preNode.val.length / 2) : Set X))ᶜ := (hcompat hz).2
+      have hk : preNode.val.length / 2 = k := by
+        simp [preNode]
+      simpa [hk] using hz'
+    have : x ∈ (closure (N k : Set X))ᶜ := hAvoid hxInMove
+    exact this hxcl
+
+theorem basis_invariant_one_of_isMeagre (F G : FamilyBM X) (A : Set X) (hA : IsMeagre A) :
+    (gameBM (X := X) F A).ExistsWinning Player.one ∧
+      (gameBM (X := X) G A).ExistsWinning Player.one :=
+  ⟨existsWinning_one_of_isMeagre_BM (F := F) (A := A) hA,
+    existsWinning_one_of_isMeagre_BM (F := G) (A := A) hA⟩
+
+theorem existsWinning_zero_imp_not_isMeagre (F : FamilyBM X) (A : Set X)
+    (hWin : (gameBM (X := X) F A).ExistsWinning Player.zero) : ¬ IsMeagre A := by
+  intro hMeagre
+  have hOne : (gameBM (X := X) F A).ExistsWinning Player.one :=
+    existsWinning_one_of_isMeagre_BM (F := F) (A := A) hMeagre
+  have hne : [] ∈ (gameBM (X := X) F A).tree := by
+    simpa [gameBM, interGame] using (nil_mem_chainTree (V := F.W))
+  exact (GaleStewartGame.Game.ExistsWinning.not_both_winning
+    (G := gameBM (X := X) F A) (p := Player.zero) hWin hne) hOne
+
+theorem exists_open_nonempty_dense_of_existsWinning_zero (F : FamilyBM X) (A : Set X)
+    (hWin : (gameBM (X := X) F A).ExistsWinning Player.zero) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧
+      ∀ O, IsOpen O → O ⊆ U0 → O.Nonempty → (O ∩ A).Nonempty := by
+  classical
+  obtain ⟨S, hSwin⟩ := hWin
+  -- Root move chosen by Player `zero`.
+  have hroot : [] ∈ S.pre.subtree := by
+    simpa using (nil_mem_chainTree (V := F.W))
+  let rootSub : S.pre.subtree := ⟨[], hroot⟩
+  have hpos0 : IsPosition rootSub.val Player.zero := by
+    simp [IsPosition, Player.toNat, rootSub]
+  let a0 := S (S.pre.subtree_incl rootSub) hpos0
+  let U0 : Set X := interior (a0.val : Set X)
+  have hU0o : IsOpen U0 := isOpen_interior
+  have hU0ne : U0.Nonempty := F.interior_nonempty_mem (U := a0.val) a0.val.property
+  refine ⟨U0, hU0o, hU0ne, ?_⟩
+  intro O hOo hOsub hOne
+  -- Choose a move of Player `one` inside the given open set.
+  rcases F.refine_open (U := O) hOo hOne with ⟨Vset, hVmem, hVsub⟩
+  let V : F.W := ⟨Vset, hVmem⟩
+  have hVsubU0 : (V : Set X) ⊆ U0 := fun x hx => hOsub (hVsub hx)
+  have hVsubA0 : (V : Set X) ⊆ (a0.val : Set X) := fun x hx => interior_subset (hVsubU0 hx)
+  -- First move of `S` appears in the subtree.
+  have hprefix1 : rootSub.val ++ [a0.val] ∈ S.pre.subtree := by
+    have hx0 : rootSub.val ++ [a0.val] ∈ chainTree (V := F.W) := a0.prop
+    have hmem : ⟨a0.val, hx0⟩ ∈ S.pre (S.pre.subtree_incl rootSub) hpos0 := by
+      have ha : (⟨a0.val, hx0⟩ : Descriptive.Tree.ExtensionsAt (S.pre.subtree_incl rootSub)) = a0 := by
+        apply Descriptive.Tree.ExtensionsAt.ext
+        rfl
+      simpa [Strategy.pre, ha]
+    exact (S.pre.subtree_compatible_iff rootSub hpos0).2 ⟨hx0, hmem⟩
+  let x1 : S.pre.subtree := ⟨rootSub.val ++ [a0.val], hprefix1⟩
+  have hpos1 : IsPosition x1.val Player.one := by
+    simp [IsPosition, Player.toNat, x1, rootSub]
+  -- Player `one` may choose `V` at the next move.
+  have hprefix2 : x1.val ++ [V] ∈ S.pre.subtree := by
+    have hx1_tree : x1.val ∈ chainTree (V := F.W) := (S.pre.subtree_sub x1.prop)
+    have hconcat : x1.val ++ [V] ∈ chainTree (V := F.W) := by
+      rw [concat_mem_chainTree (V := F.W)]
+      refine ⟨hx1_tree, ?_⟩
+      intro hxne
+      have : x1.val.getLast hxne = a0.val := by
+        simp [x1, rootSub]
+      simpa [this] using hVsubA0
+    simpa [x1] using (S.pre.subtree_fair x1 hpos1).2 hconcat
+  let pref : List F.W := x1.val ++ [V]
+  -- Build an infinite play extending the prefix `pref`.
+  have hpruned_tree : Descriptive.Tree.IsPruned (chainTree (V := F.W)) := by
+    intro x
+    by_cases hx : x.val = []
+    · rcases F.nonempty with ⟨U, hU⟩
+      let V' : F.W := ⟨U, hU⟩
+      have : x.val ++ [V'] ∈ chainTree (V := F.W) := by
+        simp [hx, chainTree]
+      exact ⟨⟨V', this⟩⟩
+    ·
+      let Uel : F.W := x.val.getLast hx
+      let U : Set X := interior (Uel : Set X)
+      have hUo : IsOpen U := isOpen_interior
+      have hUne : U.Nonempty := F.interior_nonempty_mem (U := Uel) Uel.property
+      rcases F.refine_open (U := U) hUo hUne with ⟨Vset', hVmem', hVsub'⟩
+      let V' : F.W := ⟨Vset', hVmem'⟩
+      have hsub : (V' : Set X) ⊆ x.val.getLast hx := by
+        intro y hy; exact interior_subset (hVsub' hy)
+      have hconcat : x.val ++ [V'] ∈ chainTree (V := F.W) := by
+        rw [concat_mem_chainTree (V := F.W)]
+        refine ⟨x.prop, ?_⟩
+        intro _; exact hsub
+      exact ⟨⟨V', hconcat⟩⟩
+  have hpruned_sub : Descriptive.Tree.IsPruned S.pre.subtree :=
+    (S.quasi.subtree_isPruned hpruned_tree)
+  have hpruned_pref : Descriptive.Tree.IsPruned (Descriptive.Tree.subAt S.pre.subtree pref) :=
+    hpruned_sub.sub pref
+  have hpref : pref ∈ S.pre.subtree := by
+    simpa [pref] using hprefix2
+  have hbody_pref :
+      (Descriptive.Tree.body (Descriptive.Tree.subAt S.pre.subtree pref)).Nonempty := by
+    simpa [hpref] using
+      (Descriptive.Tree.IsPruned.body_ne_iff_ne
+        (T := Descriptive.Tree.subAt S.pre.subtree pref) hpruned_pref).2 (by simp [hpref])
+  rcases hbody_pref with ⟨b, hb⟩
+  let a : Descriptive.Tree.body S.pre.subtree :=
+    Descriptive.Tree.body.append (T := S.pre.subtree) pref ⟨b, hb⟩
+  -- Apply the winning property of `S`.
+  rcases hSwin a.prop with ⟨ha_tree, hpay⟩
+  have hpay' : (A ∩ ⋂ n, (a.val.get n : Set X)).Nonempty := by
+    have hpay0 : (A ∩ ⋂ n, ((ha_tree : Descriptive.Tree.body (chainTree F.W)).val.get n : Set X)).Nonempty := by
+      simpa [gameBM, interGame, payoffHits, Player.payoff] using hpay.1
+    simpa [hpay.2] using hpay0
+  rcases hpay' with ⟨x, hxA, hxI⟩
+  have hxV : x ∈ (a.val.get 1 : Set X) := by
+    have := (Set.mem_iInter.mp hxI) 1
+    simpa using this
+  have hget1 : a.val.get 1 = V := by
+    have hlt : (1 : ℕ) < pref.length := by
+      simp [pref, x1]
+    have h := (Stream'.get_append_left (x := pref) (a := b) (n := 1) hlt)
+    simpa [a, Descriptive.Tree.body.append, pref, x1] using h
+  have hxO : x ∈ O := by
+    have hxV' : x ∈ (V : Set X) := by simpa [hget1] using hxV
+    exact hVsub hxV'
+  exact ⟨x, ⟨hxO, hxA⟩⟩
+
+end MeagreBM
+
+section Unconditional
+
+open Set
+
+variable {X : Type*} [TopologicalSpace X]
+variable (F : FamilyBM X)
+
+structure Node (S : Strategy (chainTree F.W) Player.zero) where
+  hist : List F.W
+  mem : hist ∈ S.pre.subtree
+  odd : IsPosition hist Player.one
+
+namespace Node
+
+variable {F} {S : Strategy (chainTree F.W) Player.zero}
+
+lemma hist_in_tree (x : Node (F := F) S) : x.hist ∈ chainTree F.W :=
+  S.pre.subtree_sub x.mem
+
+lemma ne_nil (x : Node (F := F) S) : x.hist ≠ [] := by
+  intro h0
+  have : x.hist.length % 2 = 0 := by simp [h0]
+  have : x.hist.length % 2 = 1 := by
+    simpa [IsPosition, Player.toNat, h0] using x.odd
+  omega
+
+noncomputable def openSet (x : Node (F := F) S) : Set X :=
+  interior (x.hist.getLast (x.ne_nil) : Set X)
+
+lemma openSet_isOpen (x : Node (F := F) S) : IsOpen (x.openSet) := isOpen_interior
+
+lemma openSet_nonempty (x : Node (F := F) S) :
+    (x.openSet).Nonempty := by
+  have hne :
+      (interior (x.hist.getLast (x.ne_nil) : Set X)).Nonempty :=
+    F.interior_nonempty_mem (U := x.hist.getLast (x.ne_nil)) (x.hist.getLast (x.ne_nil)).property
+  simpa [Node.openSet] using hne
+
+lemma openSet_subset_last (x : Node (F := F) S) :
+    x.openSet ⊆ (x.hist.getLast (x.ne_nil) : Set X) :=
+  interior_subset
+
+lemma odd_length (x : Node (F := F) S) : x.hist.length % 2 = 1 := by
+  simpa [IsPosition, Player.toNat] using x.odd
+
+lemma pos_append (x : Node (F := F) S) (V : F.W) :
+    IsPosition (x.hist ++ [V]) Player.zero := by
+  have hodd : x.hist.length % 2 = 1 := odd_length x
+  have : (x.hist.length + 1) % 2 = 0 := by omega
+  simpa [IsPosition, Player.toNat, List.length_append] using this
+
+lemma odd_append_two (x : Node (F := F) S) (V a : F.W) :
+    IsPosition (x.hist ++ [V] ++ [a]) Player.one := by
+  have hodd : x.hist.length % 2 = 1 := odd_length x
+  have : (x.hist.length + 1 + 1) % 2 = 1 := by omega
+  simpa [IsPosition, Player.toNat, List.length_append, Nat.add_assoc] using this
+
+end Node
+
+noncomputable def rootNode
+    (S : Strategy (chainTree F.W) Player.zero)
+    (hroot : [] ∈ chainTree F.W) :
+    Node (F := F) S := by
+  classical
+  have hroot_sub : [] ∈ S.pre.subtree := by
+    simpa [Strategy.pre] using (S.pre.subtree_ne (T := chainTree F.W)).2 hroot
+  let rootSub : S.pre.subtree := ⟨[], hroot_sub⟩
+  have hpos0 : IsPosition rootSub.val Player.zero := by
+    simp [IsPosition, Player.toNat, rootSub]
+  let a0 := S (S.pre.subtree_incl rootSub) hpos0
+  have hprefix : rootSub.val ++ [a0.val] ∈ S.pre.subtree := by
+    have hiff := (S.pre.subtree_compatible_iff rootSub hpos0 (a := a0.val))
+    refine (hiff.mpr ?_)
+    refine ⟨a0.prop, ?_⟩
+    simp [Strategy.pre, a0]
+  refine ⟨[a0.val], ?_, ?_⟩
+  · simpa [rootSub] using hprefix
+  · simp [IsPosition, Player.toNat]
+
+section LocalBasisData
+
+variable {A : Set X}
+variable {S : Strategy (chainTree F.W) Player.zero}
+
+noncomputable def chooseV_exists (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) :
+    ∃ V : Set X, V ∈ F.W ∧ V ⊆ U.set := by
+  rcases U.nonempty with ⟨y, hy⟩
+  rcases hLB y U.set U.isOpen hy with ⟨V, hVmem, hyV, hVsub⟩
+  exact ⟨V, hVmem, hVsub⟩
+
+noncomputable def chooseV (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) : F.W :=
+  ⟨Classical.choose (chooseV_exists (F := F) x hLB U),
+    (Classical.choose_spec (chooseV_exists (F := F) x hLB U)).1⟩
+
+lemma chooseV_subset (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) :
+    (chooseV (F := F) x hLB U : Set X) ⊆ U.set :=
+  (Classical.choose_spec (chooseV_exists (F := F) x hLB U)).2
+
+noncomputable def nextMove (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) : F.W := by
+  classical
+  let V : F.W := chooseV (F := F) x hLB U
+  have hxTree : x.hist ++ [V] ∈ chainTree F.W := by
+    rw [concat_mem_chainTree (V := F.W)]
+    refine ⟨x.hist_in_tree, ?_⟩
+    intro hxne
+    have hVsub : (V : Set X) ⊆ (x.hist.getLast hxne : Set X) := by
+      have hVsubU : (V : Set X) ⊆ U.set :=
+        chooseV_subset (F := F) x hLB U
+      have hUsub : U.set ⊆ Node.openSet x := U.subset
+      have hOpenSub : Node.openSet x ⊆ (x.hist.getLast hxne : Set X) :=
+        Node.openSet_subset_last x
+      exact (hVsubU.trans hUsub).trans hOpenSub
+    exact hVsub
+  have hxSub : x.hist ++ [V] ∈ S.pre.subtree := by
+    have hpos1' :
+        IsPosition ( (⟨x.hist, x.mem⟩ : S.pre.subtree).val ) Player.zero.swap := by
+      simpa [Player.swap] using x.odd
+    have hiff := (S.pre.subtree_fair (x := (⟨x.hist, x.mem⟩ : S.pre.subtree)) (a := V) hpos1')
+    exact (hiff.mpr hxTree)
+  let nodeSub : S.pre.subtree := ⟨x.hist ++ [V], hxSub⟩
+  have hpos : IsPosition (x.hist ++ [V]) Player.zero := Node.pos_append (x := x) V
+  exact (S (S.pre.subtree_incl nodeSub) hpos).val
+
+lemma nextMove_subset (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) :
+    (nextMove (F := F) x hLB U : Set X) ⊆
+      (chooseV (F := F) x hLB U : Set X) := by
+  classical
+  -- unfold `nextMove`
+  -- reintroduce the local definitions explicitly
+  let V : F.W := chooseV (F := F) x hLB U
+  have hxTree : x.hist ++ [V] ∈ chainTree F.W := by
+    rw [concat_mem_chainTree (V := F.W)]
+    refine ⟨x.hist_in_tree, ?_⟩
+    intro hxne
+    have hVsubU : (V : Set X) ⊆ U.set :=
+      chooseV_subset (F := F) x hLB U
+    have hUsub : U.set ⊆ Node.openSet x := U.subset
+    have hOpenSub : Node.openSet x ⊆ (x.hist.getLast hxne : Set X) :=
+      Node.openSet_subset_last x
+    exact (hVsubU.trans hUsub).trans hOpenSub
+  have hxSub : x.hist ++ [V] ∈ S.pre.subtree := by
+    have hpos1' :
+        IsPosition ( (⟨x.hist, x.mem⟩ : S.pre.subtree).val ) Player.zero.swap := by
+      simpa [Player.swap] using x.odd
+    have hiff := (S.pre.subtree_fair (x := (⟨x.hist, x.mem⟩ : S.pre.subtree)) (a := V) hpos1')
+    exact (hiff.mpr hxTree)
+  let nodeSub : S.pre.subtree := ⟨x.hist ++ [V], hxSub⟩
+  have hpos : IsPosition (x.hist ++ [V]) Player.zero := Node.pos_append (x := x) V
+  let a := S (S.pre.subtree_incl nodeSub) hpos
+  have hxTree' : x.hist ++ [V] ++ [a.val] ∈ chainTree F.W := a.prop
+  have hsub : (a.val : Set X) ⊆ (x.hist ++ [V]).getLast (by simp) := by
+    have h := (concat_mem_chainTree (V := F.W) (x := x.hist ++ [V]) (A := a.val)).1 hxTree'
+    exact h.2 (by simp)
+  have hlast : (x.hist ++ [V]).getLast (by simp) = V := by
+    simp
+  simpa [nextMove] using hsub
+
+noncomputable def nextOpen (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) : OpenSub (Node.openSet x) := by
+  classical
+  let a : F.W := nextMove (F := F) x hLB U
+  refine ⟨interior (a : Set X), isOpen_interior, ?_, ?_⟩
+  · have hne := F.interior_nonempty_mem (U := a) a.property
+    simpa using hne
+  · intro y hy
+    have hy' : y ∈ (a : Set X) := interior_subset hy
+    have hsub : (a : Set X) ⊆ (chooseV (F := F) x hLB U : Set X) :=
+      nextMove_subset (F := F) x hLB U
+    have hsubU : (chooseV (F := F) x hLB U : Set X) ⊆ U.set :=
+      chooseV_subset (F := F) x hLB U
+    have hUsub : U.set ⊆ Node.openSet x := U.subset
+    exact hUsub (hsubU (hsub hy'))
+
+lemma nextOpen_subset (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) :
+    (nextOpen (F := F) x hLB U).set ⊆ U.set := by
+  intro y hy
+  have hsub : (nextOpen (F := F) x hLB U).set ⊆ Node.openSet x :=
+    (nextOpen (F := F) x hLB U).subset
+  have hy' : y ∈ Node.openSet x := hsub hy
+  have hsub' : (nextOpen (F := F) x hLB U).set ⊆
+      (chooseV (F := F) x hLB U : Set X) := by
+    intro z hz
+    have hz' : z ∈ (nextMove (F := F) x hLB U : Set X) := by
+      exact interior_subset hz
+    exact (nextMove_subset (F := F) x hLB U) hz'
+  exact (chooseV_subset (F := F) x hLB U) (hsub' hy)
+
+noncomputable def childFamily (x : Node (F := F) S)
+    (hLB : F.LocalBasis) :
+    {𝒰 : Set (OpenSub (Node.openSet x)) //
+      𝒰.Pairwise (fun U V =>
+        Disjoint (nextOpen (F := F) x hLB U).set (nextOpen (F := F) x hLB V).set) ∧
+      DenseWithin (⋃ U ∈ 𝒰, (nextOpen (F := F) x hLB U).set) (Node.openSet x)} := by
+  classical
+  have hU0o : IsOpen (Node.openSet x) := Node.openSet_isOpen x
+  let h :=
+    exists_pairwiseDisjoint_image_denseWithin
+      (U0 := Node.openSet x) hU0o
+      (f := fun U => nextOpen (F := F) x hLB U)
+      (hf := nextOpen_subset (F := F) x hLB)
+  refine ⟨Classical.choose h, ?_⟩
+  exact Classical.choose_spec h
+
+noncomputable def childNode (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (U : OpenSub (Node.openSet x)) :
+    Node (F := F) S := by
+  classical
+  let V : F.W := chooseV (F := F) x hLB U
+  have hxTree : x.hist ++ [V] ∈ chainTree F.W := by
+    rw [concat_mem_chainTree (V := F.W)]
+    refine ⟨x.hist_in_tree, ?_⟩
+    intro hxne
+    have hVsubU : (V : Set X) ⊆ U.set :=
+      chooseV_subset (F := F) x hLB U
+    have hUsub : U.set ⊆ Node.openSet x := U.subset
+    have hOpenSub : Node.openSet x ⊆ (x.hist.getLast hxne : Set X) :=
+      Node.openSet_subset_last x
+    exact (hVsubU.trans hUsub).trans hOpenSub
+  have hpos0 : IsPosition (x.hist ++ [V]) Player.zero := Node.pos_append (x := x) V
+  have hxSub : x.hist ++ [V] ∈ S.pre.subtree := by
+    have hpos1' :
+        IsPosition ( (⟨x.hist, x.mem⟩ : S.pre.subtree).val ) Player.zero.swap := by
+      simpa [Player.swap] using x.odd
+    have hiff := (S.pre.subtree_fair (x := (⟨x.hist, x.mem⟩ : S.pre.subtree)) (a := V) hpos1')
+    exact (hiff.mpr hxTree)
+  let nodeSub : S.pre.subtree := ⟨x.hist ++ [V], hxSub⟩
+  let a := S (S.pre.subtree_incl nodeSub) hpos0
+  have hxTree' : x.hist ++ [V] ++ [a.val] ∈ chainTree F.W := a.prop
+  have hprefix : x.hist ++ [V] ++ [a.val] ∈ S.pre.subtree := by
+    have hiff := (S.pre.subtree_compatible_iff nodeSub hpos0 (a := a.val))
+    refine (hiff.mpr ?_)
+    refine ⟨hxTree', ?_⟩
+    simp [Strategy.pre, a]
+  refine ⟨x.hist ++ [V] ++ [a.val], hprefix, ?_⟩
+  simpa using Node.odd_append_two (x := x) V a.val
+
+lemma childNode_openSet (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) :
+    Node.openSet (childNode (F := F) x hLB U) =
+      (nextOpen (F := F) x hLB U).set := by
+  classical
+  simp [childNode, nextOpen, nextMove, Node.openSet]
+
+lemma childNode_openSet_subset (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) :
+    Node.openSet (childNode (F := F) x hLB U) ⊆ Node.openSet x := by
+  classical
+  simpa [childNode_openSet] using (nextOpen (F := F) x hLB U).subset
+
+end LocalBasisData
+
+end Unconditional
+
+section CompleteMetric
+
+open Topology Metric
+
+variable {X : Type*} [MetricSpace X] [CompleteSpace X] [Nonempty X]
+open residual.dom
+
+/-- The family of all closed balls of positive radius. -/
+noncomputable def closedBallFamily : FamilyBM X where
+  W := {U | ∃ x r, 0 < r ∧ U = closedBall x r}
+  interior_nonempty_mem := by
+    intro U hU
+    rcases hU with ⟨x, r, hr, rfl⟩
+    have hne : (ball x r).Nonempty := ⟨x, Metric.mem_ball_self hr⟩
+    exact hne.mono (ball_subset_interior_closedBall (x := x) (ε := r))
+  nonempty := by
+    classical
+    refine ⟨closedBall (Classical.choice (show Nonempty X from inferInstance)) 1, ?_⟩
+    exact ⟨_, 1, by norm_num, rfl⟩
+  refine_open := by
+    intro U hUo hUne
+    rcases hUne with ⟨x, hx⟩
+    rcases Metric.isOpen_iff.1 hUo x hx with ⟨r, hrpos, hrsub⟩
+    refine ⟨closedBall x (r / 2), ?_, ?_⟩
+    · refine ⟨x, r / 2, by nlinarith, rfl⟩
+    · intro y hy
+      apply hrsub
+      have : dist y x < r := lt_of_le_of_lt hy (by nlinarith)
+      simpa [Metric.mem_ball] using this
+
+lemma closedBallFamily_localBasis (X : Type*) [MetricSpace X] [Nonempty X] :
+    (closedBallFamily (X := X)).LocalBasis := by
+  intro x U hUo hxU
+  rcases Metric.isOpen_iff.1 hUo x hxU with ⟨ε, hεpos, hεsub⟩
+  let r : ℝ := ε / 2
+  have hrpos : 0 < r := by
+    have : 0 < ε / 2 := by nlinarith
+    simpa [r] using this
+  have hsub : closedBall x r ⊆ U := by
+    intro y hy
+    apply hεsub
+    have hrlt : r < ε := by
+      have : ε / 2 < ε := by nlinarith
+      simpa [r] using this
+    have : dist y x < ε := lt_of_le_of_lt hy hrlt
+    simpa [Metric.mem_ball] using this
+  refine ⟨closedBall x r, ?_, ?_, hsub⟩
+  · exact ⟨x, r, hrpos, rfl⟩
+  ·
+    have : dist x x ≤ r := by simpa [dist_self] using (le_of_lt hrpos)
+    simpa [Metric.mem_closedBall] using this
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma exists_closedBall_subset (O : Set X) (hO : IsOpen O) (hOne : O.Nonempty) (n : ℕ) :
+    ∃ c r, 0 < r ∧ r ≤ (1 / (n + 1 : ℝ)) ∧ closedBall c r ⊆ O := by
+  rcases hOne with ⟨c, hc⟩
+  rcases Metric.isOpen_iff.1 hO c hc with ⟨ε, hεpos, hεsub⟩
+  let r : ℝ := min (ε / 2) (1 / (n + 1 : ℝ))
+  have hrpos : 0 < r := by
+    have : 0 < ε / 2 := by nlinarith
+    exact lt_min this (by
+      have : (0 : ℝ) < (n + 1 : ℝ) := by exact_mod_cast (Nat.succ_pos _)
+      exact one_div_pos.2 this)
+  have hrle : r ≤ (1 / (n + 1 : ℝ)) := min_le_right _ _
+  have hrlt : r < ε := by
+    have : r ≤ ε / 2 := min_le_left _ _
+    exact lt_of_le_of_lt this (by nlinarith)
+  have hsub : closedBall c r ⊆ O := by
+    intro y hy
+    apply hεsub
+    exact (closedBall_subset_ball hrlt) hy
+  exact ⟨c, r, hrpos, hrle, hsub⟩
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma exists_ball_subset_of_isOpen_lt {U : Set X} (hU : IsOpen U) {x : X} (hx : x ∈ U)
+    {δ : ℝ} (hδ : 0 < δ) :
+    ∃ ε, 0 < ε ∧ ε < δ ∧ Metric.ball x ε ⊆ U := by
+  rcases Metric.isOpen_iff.1 hU x hx with ⟨ε0, hε0pos, hε0sub⟩
+  let ε : ℝ := min ε0 (δ / 2)
+  have hεpos : 0 < ε := by
+    have : 0 < δ / 2 := by nlinarith
+    exact lt_min hε0pos this
+  have hεlt : ε < δ := by
+    have : ε ≤ δ / 2 := min_le_right _ _
+    exact lt_of_le_of_lt this (by nlinarith)
+  have hsub : Metric.ball x ε ⊆ U := by
+    intro y hy
+    apply hε0sub
+    have : dist y x < ε0 := lt_of_lt_of_le hy (min_le_left _ _)
+    simpa [Metric.mem_ball] using this
+  exact ⟨ε, hεpos, hεlt, hsub⟩
+
+section Shrinking
+
+variable {F : FamilyBM X}
+variable {S : Strategy (chainTree F.W) Player.zero}
+
+noncomputable def shrinkRadius (n : ℕ) : ℝ := 1 / ((n : ℝ) + 1)
+
+lemma shrinkRadius_pos (n : ℕ) : 0 < shrinkRadius (n := n) := by
+  have : (0 : ℝ) < (n + 1 : ℝ) := by exact_mod_cast (Nat.succ_pos _)
+  exact one_div_pos.2 this
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma exists_shrinkOpen (x : Node (F := F) S) (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    ∃ V : OpenSub (Node.openSet x), ∃ c r, 0 < r ∧ r < shrinkRadius (n := n) ∧
+      V.set = Metric.ball c r ∧ V.set ⊆ U.set := by
+  rcases U.nonempty with ⟨y, hy⟩
+  have hδ : 0 < shrinkRadius (n := n) := shrinkRadius_pos (n := n)
+  rcases exists_ball_subset_of_isOpen_lt (X := X) (U := U.set) (hU := U.isOpen)
+      (hx := hy) hδ with ⟨ε, hεpos, hεlt, hsub⟩
+  let V : OpenSub (Node.openSet x) :=
+    ⟨Metric.ball y ε, Metric.isOpen_ball, ⟨y, Metric.mem_ball_self hεpos⟩,
+      by
+        intro z hz
+        exact U.subset (hsub hz)⟩
+  refine ⟨V, y, ε, hεpos, hεlt, rfl, hsub⟩
+
+noncomputable def shrinkOpen (x : Node (F := F) S) (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    OpenSub (Node.openSet x) :=
+  Classical.choose (exists_shrinkOpen (F := F) (S := S) x U n)
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma shrinkOpen_spec (x : Node (F := F) S) (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    ∃ c r, 0 < r ∧ r < shrinkRadius (n := n) ∧
+      (shrinkOpen (F := F) (S := S) x U n).set = Metric.ball c r ∧
+        (shrinkOpen (F := F) (S := S) x U n).set ⊆ U.set :=
+  Classical.choose_spec (exists_shrinkOpen (F := F) (S := S) x U n)
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma shrinkOpen_subset (x : Node (F := F) S) (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    (shrinkOpen (F := F) (S := S) x U n).set ⊆ U.set := by
+  rcases shrinkOpen_spec (F := F) (S := S) x U n with ⟨_, _, _, _, _, hsub⟩
+  exact hsub
+
+noncomputable def nextMove_shrink (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) : F.W :=
+  nextMove (F := F) x hLB (shrinkOpen (F := F) (S := S) x U n)
+
+noncomputable def nextOpen_shrink (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) : OpenSub (Node.openSet x) :=
+  nextOpen (F := F) x hLB (shrinkOpen (F := F) (S := S) x U n)
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma nextOpen_shrink_subset (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    (nextOpen_shrink (F := F) (S := S) x hLB U n).set ⊆ U.set := by
+  intro y hy
+  have hsub1 :
+      (nextOpen_shrink (F := F) (S := S) x hLB U n).set ⊆
+        (shrinkOpen (F := F) (S := S) x U n).set := by
+    simpa [nextOpen_shrink] using
+      (nextOpen_subset (F := F) (S := S) (x := x) (hLB := hLB)
+        (U := shrinkOpen (F := F) (S := S) x U n))
+  have hsub2 :
+      (shrinkOpen (F := F) (S := S) x U n).set ⊆ U.set :=
+    shrinkOpen_subset (F := F) (S := S) x U n
+  exact hsub2 (hsub1 hy)
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma nextMove_shrink_subset_ball (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    ∃ c r, 0 < r ∧ r < shrinkRadius (n := n) ∧
+      (nextMove_shrink (F := F) (S := S) x hLB U n : Set X) ⊆ Metric.ball c r := by
+  rcases shrinkOpen_spec (F := F) (S := S) x U n with ⟨c, r, hrpos, hrl, hEq, hsubU⟩
+  refine ⟨c, r, hrpos, hrl, ?_⟩
+  have hsub1 :
+      (nextMove_shrink (F := F) (S := S) x hLB U n : Set X) ⊆
+        (shrinkOpen (F := F) (S := S) x U n).set := by
+    have h1 :
+        (nextMove (F := F) x hLB (shrinkOpen (F := F) (S := S) x U n) : Set X) ⊆
+          (chooseV (F := F) x hLB (shrinkOpen (F := F) (S := S) x U n) : Set X) :=
+      nextMove_subset (F := F) (S := S) (x := x) (hLB := hLB)
+        (U := shrinkOpen (F := F) (S := S) x U n)
+    have h2 :
+        (chooseV (F := F) x hLB (shrinkOpen (F := F) (S := S) x U n) : Set X) ⊆
+          (shrinkOpen (F := F) (S := S) x U n).set :=
+      chooseV_subset (F := F) (S := S) (x := x) (hLB := hLB)
+        (U := shrinkOpen (F := F) (S := S) x U n)
+    simpa [nextMove_shrink] using h1.trans h2
+  simpa [hEq] using hsub1
+
+noncomputable def childFamily_shrink (x : Node (F := F) S)
+    (hLB : F.LocalBasis) (n : ℕ) :
+    {𝒰 : Set (OpenSub (Node.openSet x)) //
+      𝒰.Pairwise (fun U V =>
+        Disjoint (nextOpen_shrink (F := F) (S := S) x hLB U n).set
+          (nextOpen_shrink (F := F) (S := S) x hLB V n).set) ∧
+      DenseWithin (⋃ U ∈ 𝒰, (nextOpen_shrink (F := F) (S := S) x hLB U n).set)
+        (Node.openSet x)} := by
+  classical
+  have hU0o : IsOpen (Node.openSet x) := Node.openSet_isOpen x
+  let h :=
+    exists_pairwiseDisjoint_image_denseWithin
+      (U0 := Node.openSet x) hU0o
+      (f := fun U => nextOpen_shrink (F := F) (S := S) x hLB U n)
+      (hf := fun U => nextOpen_shrink_subset (F := F) (S := S) (x := x) (hLB := hLB) (U := U) (n := n))
+  refine ⟨Classical.choose h, ?_⟩
+  exact Classical.choose_spec h
+
+noncomputable def childNode_shrink (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) : Node (F := F) S :=
+  childNode (F := F) (S := S) x hLB (shrinkOpen (F := F) (S := S) x U n)
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma childNode_shrink_openSet (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    Node.openSet (childNode_shrink (F := F) (S := S) x hLB U n) =
+      (nextOpen_shrink (F := F) (S := S) x hLB U n).set := by
+  simpa [childNode_shrink, nextOpen_shrink] using
+    (childNode_openSet (F := F) (S := S) (x := x) (hLB := hLB)
+      (U := shrinkOpen (F := F) (S := S) x U n))
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma childNode_shrink_openSet_subset (x : Node (F := F) S) (hLB : F.LocalBasis)
+    (U : OpenSub (Node.openSet x)) (n : ℕ) :
+    Node.openSet (childNode_shrink (F := F) (S := S) x hLB U n) ⊆ Node.openSet x := by
+  simpa [childNode_shrink_openSet] using
+    (nextOpen_shrink (F := F) (S := S) x hLB U n).subset
+
+end Shrinking
+
+theorem existsWinning_zero_of_isMeagre_diff (A U0 : Set X) (hU0o : IsOpen U0)
+    (hU0ne : U0.Nonempty) (hMeagre : IsMeagre (U0 \ A)) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  classical
+  -- Decompose the complement in `U0` as a countable union of nowhere dense sets.
+  let N : ℕ → {t : Set X // IsNowhereDense t} :=
+    Classical.choose (hMeagre.eq_countable_union_isNowhereDense)
+  have hUAeq : U0 \ A = ⋃ n, (N n : Set X) :=
+    Classical.choose_spec (hMeagre.eq_countable_union_isNowhereDense)
+  -- Current open set along a finite play.
+  let currOpen : List (closedBallFamily (X := X)).W → Set X := fun x =>
+    match x.getLast? with
+    | none => U0
+    | some U => interior (U : Set X)
+  have hcurrOpen_open : ∀ x, IsOpen (currOpen x) := by
+    intro x; cases h : x.getLast? <;> simp [currOpen, h, hU0o, isOpen_interior]
+  have hcurrOpen_nonempty : ∀ x, (currOpen x).Nonempty := by
+    intro x; cases h : x.getLast? with
+    | none =>
+        simpa [currOpen, h] using hU0ne
+    | some U =>
+        have : (interior (U : Set X)).Nonempty :=
+          (closedBallFamily (X := X)).interior_nonempty_mem (U := U) U.property
+        simpa [currOpen, h] using this
+  -- A quasistrategy that lets Player `zero` pick a small closed ball avoiding `N n`.
+  let P : PreStrategy (chainTree (closedBallFamily (X := X)).W) Player.zero := by
+    intro x hp
+    let n : ℕ := x.val.length / 2
+    exact {a | ∃ c r, 0 < r ∧ (a.val : Set X) = closedBall c r ∧
+      r ≤ (1 / (n + 1 : ℝ)) ∧
+      (a.val : Set X) ⊆ currOpen x.val ∩ (closure (N n : Set X))ᶜ}
+  have hPquasi : P.IsQuasi := by
+    intro x hp
+    let n : ℕ := x.val.length / 2
+    let O : Set X := currOpen x.val ∩ (closure (N n : Set X))ᶜ
+    have hDense : Dense (closure (N n : Set X))ᶜ := by
+      have hNW : IsNowhereDense (closure (N n : Set X)) := (N n).2.closure
+      have : IsOpen (closure (N n : Set X))ᶜ ∧ Dense (closure (N n : Set X))ᶜ := by
+        simpa using (isClosed_isNowhereDense_iff_compl (s := closure (N n : Set X))).1
+          ⟨isClosed_closure, hNW⟩
+      exact this.2
+    have hOopen : IsOpen O :=
+      (hcurrOpen_open x.val).inter (isOpen_compl_iff.mpr isClosed_closure)
+    have hOne : O.Nonempty := by
+      simpa [Set.inter_comm] using
+        hDense.inter_open_nonempty (currOpen x.val) (hcurrOpen_open x.val) (hcurrOpen_nonempty x.val)
+    rcases exists_closedBall_subset (X := X) O hOopen hOne n with ⟨c, r, hrpos, hrle, hsub⟩
+    let V : (closedBallFamily (X := X)).W := ⟨closedBall c r, ⟨c, r, hrpos, rfl⟩⟩
+    have hExt : x.val ++ [V] ∈ chainTree (closedBallFamily (X := X)).W := by
+      by_cases hx0 : x.val = []
+      · simp [hx0, chainTree]
+      ·
+        have hsubU : (V : Set X) ⊆ x.val.getLast hx0 := by
+          have hsub' : (V : Set X) ⊆ currOpen x.val := by
+            intro y hy; exact (hsub hy).1
+          have hcurr :
+              currOpen x.val = interior (x.val.getLast hx0 : Set X) := by
+            simp [currOpen, List.getLast?_eq_getLast_of_ne_nil hx0]
+          have hsub'' : (V : Set X) ⊆ interior (x.val.getLast hx0 : Set X) := by
+            simpa [hcurr] using hsub'
+          exact fun y hy => interior_subset (hsub'' hy)
+        rw [concat_mem_chainTree (V := (closedBallFamily (X := X)).W)]
+        refine ⟨x.prop, ?_⟩
+        intro _; exact hsubU
+    refine ⟨⟨V, hExt⟩, ?_⟩
+    refine ⟨c, r, hrpos, rfl, hrle, ?_⟩
+    change (closedBall c r ⊆ O)
+    exact hsub
+  let qS : QuasiStrategy (chainTree (closedBallFamily (X := X)).W) Player.zero := ⟨P, hPquasi⟩
+  refine (GaleStewartGame.Game.existsWinning_iff_quasi
+      (G := gameBM (X := X) (F := closedBallFamily (X := X)) A) (p := Player.zero)).2 ?_
+  refine ⟨qS, ?_⟩
+  intro a ha
+  -- Regard the play as a branch of the underlying chain tree.
+  have haCT : a ∈ Descriptive.Tree.body (chainTree (closedBallFamily (X := X)).W) :=
+    Descriptive.Tree.body_mono (PreStrategy.subtree_sub (S := qS.1)) ha
+  -- consecutive moves are decreasing by inclusion
+  have hstep : ∀ i : ℕ, (a.get (i + 1) : Set X) ⊆ (a.get i : Set X) := by
+    intro i
+    have htake : a.take (i + 2) ∈ chainTree (closedBallFamily (X := X)).W :=
+      Descriptive.Tree.take_mem_body haCT (i + 2)
+    have hmem : a.take (i + 1) ++ [a.get (i + 1)] ∈ chainTree (closedBallFamily (X := X)).W := by
+      have hconcat : a.take (i + 1) ++ [a.get (i + 1)] = a.take (i + 2) := by
+        simp
+      simpa [hconcat] using htake
+    have hsubset :=
+      (concat_mem_chainTree (V := (closedBallFamily (X := X)).W)
+        (x := a.take (i + 1)) (A := a.get (i + 1))).1 hmem
+    have hne : a.take (i + 1) ≠ [] := by
+      have hlen : 0 < (a.take (i + 1)).length := by
+        simp [Stream'.length_take]
+      exact (List.length_pos_iff_ne_nil).1 hlen
+    have hlast : (a.take (i + 1)).getLast hne = a.get i := by
+      have hconcat : a.take i ++ [a.get i] = a.take (i + 1) := by
+        simp
+      simpa [hconcat] using (List.getLast_append_singleton (a := a.get i) (a.take i))
+    have hsub : (a.get (i + 1) : Set X) ⊆ (a.take (i + 1)).getLast hne :=
+      (hsubset.2 hne)
+    simpa [hlast] using hsub
+  have hmono : ∀ {i j : ℕ}, i ≤ j → (a.get j : Set X) ⊆ (a.get i : Set X) := by
+    intro i j hij
+    induction hij with
+    | refl => exact fun _ hx => hx
+    | @step j _ ih => exact (hstep j).trans ih
+  -- compatibility data for even moves
+  have hEvenData :
+      ∀ n : ℕ,
+        ∃ c r, 0 < r ∧ (a.get (2 * n) : Set X) = closedBall c r ∧
+          r ≤ (1 / (n + 1 : ℝ)) ∧
+          (a.get (2 * n) : Set X) ⊆ currOpen (a.take (2 * n)) ∩ (closure (N n : Set X))ᶜ := by
+    intro n
+    have hprefix_mem : a.take (2 * n) ∈ qS.1.subtree :=
+      Descriptive.Tree.take_mem_body ha (2 * n)
+    let preNode : qS.1.subtree := ⟨_, hprefix_mem⟩
+    have hpos : IsPosition preNode.val Player.zero := by
+      have : (2 * n) % 2 = 0 := by omega
+      simp [IsPosition, Player.toNat, preNode, this]
+    have hnext_mem : preNode.val ++ [a.get (2 * n)] ∈ qS.1.subtree := by
+      have ht : a.take (2 * n + 1) ∈ qS.1.subtree :=
+        Descriptive.Tree.take_mem_body ha (2 * n + 1)
+      have htake' : a.take (2 * n + 1) = preNode.val ++ [a.get (2 * n)] := by
+        simp [preNode, Nat.add_comm]
+      simpa [htake'] using ht
+    have hcompat :
+        ⟨a.get (2 * n), by exact hnext_mem.1⟩ ∈
+          P ((PreStrategy.subtree_incl _ preNode)) (by simpa using hpos) := by
+      exact P.subtree_compatible preNode (by simpa using hpos) hnext_mem
+    simpa [P, preNode] using hcompat
+  have hAvoid : ∀ n : ℕ, (a.get (2 * n) : Set X) ⊆ (closure (N n : Set X))ᶜ := by
+    intro n
+    rcases hEvenData n with ⟨_, _, _, _, _, hsub⟩
+    intro x hx; exact (hsub hx).2
+  have h0sub : (a.get 0 : Set X) ⊆ U0 := by
+    rcases hEvenData 0 with ⟨_, _, _, _, _, hsub⟩
+    intro x hx
+    have : x ∈ currOpen (a.take 0) := (hsub hx).1
+    simpa [currOpen] using this
+  have hEvenU0 : ∀ n : ℕ, (a.get (2 * n) : Set X) ⊆ U0 := by
+    intro n
+    exact (hmono (i := 0) (j := 2 * n) (by omega)).trans h0sub
+  have hClosed : ∀ n : ℕ, IsClosed (a.get (2 * n) : Set X) := by
+    intro n
+    rcases (a.get (2 * n)).property with ⟨c, r, hr, hrball⟩
+    simpa [hrball] using (isClosed_closedBall (x := c) (ε := r))
+  have hBounded : ∀ n : ℕ, Bornology.IsBounded (a.get (2 * n) : Set X) := by
+    intro n
+    rcases (a.get (2 * n)).property with ⟨c, r, hr, hrball⟩
+    simpa [hrball] using (isBounded_closedBall (x := c) (r := r))
+  have hFiniteNonempty : ∀ N : ℕ, (⋂ n ≤ N, (a.get (2 * n) : Set X)).Nonempty := by
+    intro N
+    rcases (a.get (2 * N)).property with ⟨c, r, hrpos, hrball⟩
+    refine ⟨c, ?_⟩
+    have hcN : c ∈ (a.get (2 * N) : Set X) := by
+      simpa [hrball, Metric.mem_closedBall, dist_self] using (le_of_lt hrpos)
+    refine Set.mem_iInter₂.2 ?_
+    intro n hn
+    have hsub : (a.get (2 * N) : Set X) ⊆ (a.get (2 * n) : Set X) :=
+      hmono (i := 2 * n) (j := 2 * N) (by omega)
+    exact hsub hcN
+  have hDiamTendsto :
+      Filter.Tendsto (fun n : ℕ => diam (a.get (2 * n) : Set X)) Filter.atTop (𝓝 (0 : ℝ)) := by
+    have hDiamLe : ∀ n : ℕ, diam (a.get (2 * n) : Set X) ≤ 2 * (1 / (n + 1 : ℝ)) := by
+      intro n
+      rcases hEvenData n with ⟨c, r, hrpos, hrball, hrle, _⟩
+      have : diam (a.get (2 * n) : Set X) ≤ 2 * r := by
+        simpa [hrball] using (diam_closedBall (x := c) (r := r) (le_of_lt hrpos))
+      exact this.trans (by gcongr)
+    have hlim : Filter.Tendsto (fun n : ℕ => 2 * (1 / (n + 1 : ℝ))) Filter.atTop (𝓝 (0 : ℝ)) := by
+      simpa [mul_zero] using
+        (tendsto_const_nhds.mul tendsto_one_div_add_atTop_nhds_zero_nat :
+          Filter.Tendsto (fun n : ℕ => (2 : ℝ) * (1 / (n + 1 : ℝ))) Filter.atTop (𝓝 ((2 : ℝ) * 0)))
+    exact squeeze_zero (fun n => diam_nonneg) hDiamLe hlim
+  obtain ⟨x0, hx0⟩ :=
+    nonempty_iInter_of_nonempty_biInter (fun n => hClosed n) (fun n => hBounded n)
+      hFiniteNonempty hDiamTendsto
+  have hxAll : x0 ∈ ⋂ i, (a.get i : Set X) := by
+    refine Set.mem_iInter.2 ?_
+    intro i
+    rcases Nat.even_or_odd i with ⟨n, rfl⟩ | ⟨n, rfl⟩
+    · simpa [two_mul] using (Set.mem_iInter.1 hx0 n)
+    ·
+      have hxNext : x0 ∈ (a.get (2 * (n + 1)) : Set X) := by
+        simpa using (Set.mem_iInter.1 hx0 (n + 1))
+      have hsub : (a.get (2 * (n + 1)) : Set X) ⊆ (a.get (2 * n + 1) : Set X) :=
+        hmono (i := 2 * n + 1) (j := 2 * (n + 1)) (by omega)
+      exact hsub hxNext
+  have hxA : x0 ∈ A := by
+    have hxU0 : x0 ∈ U0 := hEvenU0 0 (by simpa using (Set.mem_iInter.1 hx0 0))
+    by_contra hxnot
+    have hxUA : x0 ∈ U0 \ A := ⟨hxU0, hxnot⟩
+    have hxU : x0 ∈ ⋃ n, (N n : Set X) := by
+      simpa [hUAeq] using hxUA
+    rcases Set.mem_iUnion.1 hxU with ⟨n, hxn⟩
+    have hxAvoid : x0 ∈ (closure (N n : Set X))ᶜ :=
+      hAvoid n (by simpa using (Set.mem_iInter.1 hx0 n))
+    exact hxAvoid (subset_closure hxn)
+  -- Conclude the payoff.
+  have hxAll' : x0 ∈ ⋂ n, (a.get n : Set X) := by
+    simpa [Set.mem_iInter] using hxAll
+  refine ⟨⟨a, haCT⟩, ?_, rfl⟩
+  change payoffHits (X := X) A (⋂ n, (a.get n : Set X))
+  exact ⟨x0, hxA, hxAll'⟩
+
+theorem existsWinning_zero_of_residual_diff (A U0 : Set X) (hU0o : IsOpen U0)
+    (hU0ne : U0.Nonempty) (hres : (U0 \ A)ᶜ ∈ residual X) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  have hMeagre : IsMeagre (U0 \ A) := by
+    simpa [IsMeagre] using hres
+  exact existsWinning_zero_of_isMeagre_diff (A := A) (U0 := U0) hU0o hU0ne hMeagre
+
+section UnconditionalLocalBasis
+
+open Set
+
+omit [CompleteSpace X] [Nonempty X] in
+lemma denseWithin_trans {s t U0 : Set X} (hs : DenseWithin s U0) (ht : DenseWithin t s)
+    (hsopen : IsOpen s) : DenseWithin t U0 := by
+  intro O hOo hOsub hOne
+  rcases hs O hOo hOsub hOne with ⟨x, hxO, hxs⟩
+  have hO'open : IsOpen (O ∩ s) := hOo.inter hsopen
+  have hO'sub : O ∩ s ⊆ s := by intro y hy; exact hy.2
+  have hO'ne : (O ∩ s).Nonempty := ⟨x, hxO, hxs⟩
+  rcases ht (O ∩ s) hO'open hO'sub hO'ne with ⟨y, hyO, hyt⟩
+  exact ⟨y, hyO.1, hyt⟩
+
+omit [Nonempty X] in
+lemma denseWithin_iInter_of_isOpen_nat {U0 : Set X} (hU0o : IsOpen U0)
+    {f : ℕ → Set X} (ho : ∀ n, IsOpen (f n)) (hd : ∀ n, DenseWithin (f n) U0) :
+    DenseWithin (⋂ n, f n) U0 := by
+  classical
+  let Y := {x // x ∈ U0}
+  letI : BaireSpace Y := (IsOpen.baireSpace (s := U0) hU0o)
+  let g : ℕ → Set Y := fun n => {y | (y : X) ∈ f n}
+  have hgo : ∀ n, IsOpen (g n) := by
+    intro n
+    simpa [g] using (ho n).preimage (continuous_subtype_val)
+  have hgd : ∀ n, Dense (g n) := by
+    intro n
+    refine dense_iff_inter_open.2 ?_
+    intro O hOopen hOne
+    rcases isOpen_induced_iff.mp hOopen with ⟨O', hO'open, rfl⟩
+    rcases hOne with ⟨⟨x, hxU0⟩, hxO⟩
+    have hxO' : x ∈ O' := by simpa using hxO
+    have hO1open : IsOpen (O' ∩ U0) := hO'open.inter hU0o
+    have hO1sub : O' ∩ U0 ⊆ U0 := by intro y hy; exact hy.2
+    have hO1ne : (O' ∩ U0).Nonempty := ⟨x, hxO', hxU0⟩
+    rcases hd n (O' ∩ U0) hO1open hO1sub hO1ne with ⟨y, hyO1, hyf⟩
+    refine ⟨⟨y, hyO1.2⟩, ?_⟩
+    refine ⟨?_, ?_⟩
+    · exact hyO1.1
+    · exact hyf
+  have hDenseInter : Dense (⋂ n, g n) :=
+    dense_iInter_of_isOpen_nat hgo hgd
+  intro O hOo hOsub hOne
+  have hO'open : IsOpen ((Subtype.val : Y → X) ⁻¹' O) :=
+    hOo.preimage continuous_subtype_val
+  have hO'ne : ((Subtype.val : Y → X) ⁻¹' O).Nonempty := by
+    rcases hOne with ⟨x, hxO⟩
+    exact ⟨⟨x, hOsub hxO⟩, hxO⟩
+  have hInterNonempty :
+      (((Subtype.val : Y → X) ⁻¹' O) ∩ ⋂ n, g n).Nonempty :=
+    (dense_iff_inter_open.1 hDenseInter) _ hO'open hO'ne
+  rcases hInterNonempty with ⟨⟨y, hyU0⟩, hyO, hyG⟩
+  have hyf : y ∈ ⋂ n, f n := by
+    refine Set.mem_iInter.2 ?_
+    intro n
+    have : (⟨y, hyU0⟩ : Y) ∈ g n := (Set.mem_iInter.1 hyG) n
+    simpa [g] using this
+  exact ⟨y, hyO, hyf⟩
+
+lemma length_le_of_prefix {α : Type*} {l₁ l₂ : List α} (h : l₁ <+: l₂) :
+    l₁.length ≤ l₂.length := by
+  rcases h with ⟨t, rfl⟩
+  simp
+
+lemma getElem_eq_of_prefix {α : Type*} {l₁ l₂ : List α} (h : l₁ <+: l₂) :
+    ∀ i (hi : i < l₁.length),
+      l₁[i]'hi = l₂[i]'(by exact lt_of_lt_of_le hi (length_le_of_prefix h)) := by
+  induction l₁ generalizing l₂ with
+  | nil =>
+      intro i hi
+      cases hi
+  | cons a l₁ ih =>
+      cases l₂ with
+      | nil =>
+          cases (List.prefix_nil.mp h)
+      | cons b l₂ =>
+          rcases List.cons_prefix_cons.mp h with ⟨rfl, h'⟩
+          intro i hi
+          cases i with
+          | zero =>
+              simp
+          | succ i =>
+              have hi' : i < l₁.length := by
+                simpa [List.length_cons] using hi
+              have hget := ih (l₂ := l₂) h' i hi'
+              exact hget
+
+theorem exists_open_nonempty_meagre_diff_of_existsWinning_zero_uncond
+    (F : FamilyBM X) (hLB : F.LocalBasis) (A : Set X)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  classical
+  have _ : Nonempty X := inferInstance
+  rcases hWin with ⟨S, hSwin⟩
+  have hroot : [] ∈ chainTree F.W := nil_mem_chainTree (V := F.W)
+  let root : Node (F := F) S := rootNode (F := F) (S := S) hroot
+  let U0 : Set X := Node.openSet root
+  have hU0o : IsOpen U0 := Node.openSet_isOpen root
+  have hU0ne : U0.Nonempty := Node.openSet_nonempty root
+  -- Levelwise disjoint refinements
+  let Level : ℕ → Set (Node (F := F) S) :=
+    Nat.rec ({root} : Set (Node (F := F) S))
+      (fun n Leveln =>
+        {y | ∃ x ∈ Leveln, ∃ U ∈ (childFamily_shrink (F := F) (S := S) x hLB n).1,
+          y = childNode_shrink (F := F) (S := S) x hLB U n})
+  have Level_zero : Level 0 = ({root} : Set (Node (F := F) S)) := rfl
+  have Level_succ :
+      ∀ n, Level (n + 1) =
+        {y | ∃ x ∈ Level n, ∃ U ∈ (childFamily_shrink (F := F) (S := S) x hLB n).1,
+          y = childNode_shrink (F := F) (S := S) x hLB U n} := by
+    intro n
+    rfl
+  let LevelOpen : ℕ → Set X := fun n => ⋃ x ∈ Level n, Node.openSet x
+  have LevelOpen_open : ∀ n, IsOpen (LevelOpen n) := by
+    intro n
+    refine isOpen_iUnion ?_
+    intro x; refine isOpen_iUnion ?_
+    intro hx; exact Node.openSet_isOpen x
+  have LevelOpen_dense_succ : ∀ n, DenseWithin (LevelOpen (n + 1)) (LevelOpen n) := by
+    intro n O hOo hOsub hOne
+    rcases hOne with ⟨z, hzO⟩
+    have hzLevel : z ∈ LevelOpen n := hOsub hzO
+    rcases Set.mem_iUnion.mp hzLevel with ⟨x, hx⟩
+    rcases Set.mem_iUnion.mp hx with ⟨hxLevel, hzIn⟩
+    have hO'open : IsOpen (O ∩ Node.openSet x) := hOo.inter (Node.openSet_isOpen x)
+    have hO'ne : (O ∩ Node.openSet x).Nonempty := ⟨z, hzO, hzIn⟩
+    have hO'sub : O ∩ Node.openSet x ⊆ Node.openSet x := by intro y hy; exact hy.2
+    have hDense :=
+      (childFamily_shrink (F := F) (S := S) x hLB n).2.2
+    rcases hDense (O ∩ Node.openSet x) hO'open hO'sub hO'ne with ⟨y, hyO', hyUnion⟩
+    rcases Set.mem_iUnion.mp hyUnion with ⟨U, hU⟩
+    rcases Set.mem_iUnion.mp hU with ⟨hUmem, hyIn⟩
+    have hchild_mem : childNode_shrink (F := F) (S := S) x hLB U n ∈ Level (n + 1) := by
+      change (∃ x' ∈ Level n, ∃ U' ∈ (childFamily_shrink (F := F) (S := S) x' hLB n).1,
+        childNode_shrink (F := F) (S := S) x hLB U n =
+          childNode_shrink (F := F) (S := S) x' hLB U' n)
+      exact ⟨x, hxLevel, U, hUmem, rfl⟩
+    have hyOpen : y ∈ Node.openSet (childNode_shrink (F := F) (S := S) x hLB U n) := by
+      simpa [childNode_shrink_openSet] using hyIn
+    refine ⟨y, hyO'.1, ?_⟩
+    exact Set.mem_iUnion.mpr ⟨_, Set.mem_iUnion.mpr ⟨hchild_mem, hyOpen⟩⟩
+  have LevelOpen_dense : ∀ n, DenseWithin (LevelOpen n) U0 := by
+    intro n
+    induction' n with n ih
+    · intro O hOo hOsub hOne
+      rcases hOne with ⟨x, hxO⟩
+      have hLevel0 : LevelOpen 0 = U0 := by
+        ext y
+        constructor
+        · intro hy
+          rcases Set.mem_iUnion.mp hy with ⟨x, hx⟩
+          rcases Set.mem_iUnion.mp hx with ⟨hx0, hyx⟩
+          have hx0' : x = root := by
+            simpa [Level_zero] using hx0
+          subst hx0'
+          simpa [U0] using hyx
+        · intro hyU0
+          refine Set.mem_iUnion.mpr ?_
+          refine ⟨root, Set.mem_iUnion.mpr ?_⟩
+          refine ⟨?_, ?_⟩
+          · simp [Level_zero]
+          · simpa [U0] using hyU0
+      have hxLevel : x ∈ LevelOpen 0 := by
+        simpa [hLevel0] using (hOsub hxO)
+      exact ⟨x, hxO, hxLevel⟩
+    · exact denseWithin_trans ih (LevelOpen_dense_succ n) (LevelOpen_open n)
+  let G : Set X := ⋂ n, LevelOpen n
+  have hGdense : DenseWithin G U0 :=
+    denseWithin_iInter_of_isOpen_nat (X := X) hU0o LevelOpen_open LevelOpen_dense
+  have hGsubA : G ⊆ A := by
+    intro y hyG
+    have Level_disjoint :
+        ∀ n, (Level n).Pairwise (fun x y => Disjoint (Node.openSet x) (Node.openSet y)) := by
+      intro n
+      induction n with
+      | zero =>
+          intro x hx y hy hxy
+          have hx' : x = root := by simpa [Level_zero] using hx
+          have hy' : y = root := by simpa [Level_zero] using hy
+          subst hx'
+          subst hy'
+          exact (hxy rfl).elim
+      | succ n ih =>
+          intro x hx y hy hxy
+          rcases (by simpa [Level_succ] using hx) with ⟨x1, hx1, U1, hU1, rfl⟩
+          rcases (by simpa [Level_succ] using hy) with ⟨x2, hx2, U2, hU2, rfl⟩
+          by_cases hparent : x1 = x2
+          · subst hparent
+            have hUneq : U1 ≠ U2 := by
+              intro hU
+              apply hxy
+              simp [hU]
+            have hpair := (childFamily_shrink (F := F) (S := S) x1 hLB n).2.1
+            have hdisj := hpair hU1 hU2 hUneq
+            simpa [childNode_shrink_openSet] using hdisj
+          ·
+            have hdisj_par := ih hx1 hx2 hparent
+            have hsub1 :
+                Node.openSet (childNode_shrink (F := F) (S := S) x1 hLB U1 n) ⊆
+                  Node.openSet x1 :=
+              childNode_shrink_openSet_subset (F := F) (S := S) (x := x1) (hLB := hLB)
+                (U := U1) (n := n)
+            have hsub2 :
+                Node.openSet (childNode_shrink (F := F) (S := S) x2 hLB U2 n) ⊆
+                  Node.openSet x2 :=
+              childNode_shrink_openSet_subset (F := F) (S := S) (x := x2) (hLB := hLB)
+                (U := U2) (n := n)
+            exact Disjoint.mono hsub1 hsub2 hdisj_par
+    have Level_unique :
+        ∀ n {x1 x2}, x1 ∈ Level n → x2 ∈ Level n →
+          y ∈ Node.openSet x1 → y ∈ Node.openSet x2 → x1 = x2 := by
+      intro n x1 x2 hx1 hx2 hy1 hy2
+      by_contra hxy
+      have hdisj := Level_disjoint n hx1 hx2 hxy
+      exact (Set.disjoint_left.1 hdisj) hy1 hy2
+    have hNode_exists : ∀ n, ∃ x, x ∈ Level n ∧ y ∈ Node.openSet x := by
+      intro n
+      have hyL : y ∈ LevelOpen n := (Set.mem_iInter.mp hyG) n
+      rcases Set.mem_iUnion.mp hyL with ⟨x, hx⟩
+      rcases Set.mem_iUnion.mp hx with ⟨hxLevel, hyIn⟩
+      exact ⟨x, hxLevel, hyIn⟩
+    classical
+    choose xnode hxnodeLevel hyxnode using hNode_exists
+    have hx0 : xnode 0 = root := by
+      have hx0' : xnode 0 ∈ Level 0 := hxnodeLevel 0
+      simpa [Level_zero] using hx0'
+    have xnode_parent :
+        ∀ n, ∃ U ∈ (childFamily_shrink (F := F) (S := S) (xnode n) hLB n).1,
+          xnode (n + 1) =
+            childNode_shrink (F := F) (S := S) (xnode n) hLB U n := by
+      intro n
+      have hx' : xnode (n + 1) ∈ Level (n + 1) := hxnodeLevel (n + 1)
+      rcases (by simpa [Level_succ] using hx') with ⟨x', hx'Level, U, hU, hxnode⟩
+      have hyParent : y ∈ Node.openSet x' := by
+        have hyChild :
+            y ∈ Node.openSet (childNode_shrink (F := F) (S := S) x' hLB U n) := by
+          simpa [hxnode] using hyxnode (n + 1)
+        have hsub :=
+          childNode_shrink_openSet_subset (F := F) (S := S) (x := x') (hLB := hLB) (U := U)
+            (n := n)
+        exact hsub hyChild
+      have hxuniq : xnode n = x' := by
+        refine Level_unique (n := n) (x1 := xnode n) (x2 := x') (hxnodeLevel n) hx'Level ?_ ?_
+        · exact hyxnode n
+        · exact hyParent
+      subst hxuniq
+      refine ⟨U, hU, ?_⟩
+      simpa using hxnode
+    choose U hUmem hxnode_child using xnode_parent
+    have hist_prefix_succ : ∀ n, (xnode n).hist <+: (xnode (n + 1)).hist := by
+      intro n
+      simp [hxnode_child n, childNode_shrink, childNode, List.append_assoc]
+    have hist_prefix_le : ∀ {i j}, i ≤ j → (xnode i).hist <+: (xnode j).hist := by
+      intro i j hij
+      rcases Nat.exists_eq_add_of_le hij with ⟨k, rfl⟩
+      clear hij
+      induction k with
+      | zero =>
+          simp
+      | succ k ih =>
+          exact List.IsPrefix.trans ih (hist_prefix_succ (i + k))
+    have hist_len_succ : ∀ n, (xnode (n + 1)).hist.length = (xnode n).hist.length + 2 := by
+      intro n
+      simp [hxnode_child n, childNode_shrink, childNode, List.length_append]
+    have hist_len : ∀ n, (xnode n).hist.length = 2 * n + 1 := by
+      intro n
+      induction n with
+      | zero =>
+          have hrootlen : root.hist.length = 1 := by
+            simp [root, rootNode]
+          simpa [hx0] using hrootlen
+      | succ n ih =>
+          have hlen := hist_len_succ n
+          have := ih
+          omega
+    let a : Stream' F.W := fun n =>
+      (xnode (n + 1)).hist.get ⟨n, by
+        have hlen := hist_len (n + 1)
+        have : n < 2 * (n + 1) + 1 := by omega
+        simpa [hlen] using this⟩
+    have ha_take_full : ∀ n, a.take (2 * n + 1) = (xnode n).hist := by
+      intro n
+      apply List.ext_getElem
+      · have hlen := hist_len n
+        simp [Stream'.length_take, hlen]
+      · intro i hi hi2
+        have hi1 : i < (xnode (i + 1)).hist.length := by
+          have hlen := hist_len (i + 1)
+          have : i < 2 * (i + 1) + 1 := by omega
+          simpa [hlen] using this
+        have hdef : a.get i = (xnode (i + 1)).hist[i]'hi1 := by
+          -- proof-irrelevant index in `a`'s definition
+          simp [Stream'.get, a]
+        have hgoal : a.get i = (xnode n).hist[i]'hi2 := by
+          by_cases hle : i + 1 ≤ n
+          · have hprefix := hist_prefix_le (i := i + 1) (j := n) hle
+            have hget :=
+              getElem_eq_of_prefix (l₁ := (xnode (i + 1)).hist) (l₂ := (xnode n).hist) hprefix i hi1
+            have hget' : (xnode (i + 1)).hist[i]'hi1 = (xnode n).hist[i]'hi2 := by
+              simpa using hget
+            exact hdef.trans hget'
+          · have hge : n ≤ i + 1 := Nat.le_of_not_ge hle
+            have hprefix := hist_prefix_le (i := n) (j := i + 1) hge
+            have hget :=
+              getElem_eq_of_prefix (l₁ := (xnode n).hist) (l₂ := (xnode (i + 1)).hist) hprefix i hi2
+            have hget' : (xnode (i + 1)).hist[i]'hi1 = (xnode n).hist[i]'hi2 := by
+              simpa using hget.symm
+            exact hdef.trans hget'
+        simpa [Stream'.take_get] using hgoal
+    have ha_take_mem : ∀ n, a.take n ∈ S.pre.subtree := by
+      intro n
+      have hfull := ha_take_full n
+      have hn : n ≤ 2 * n + 1 := by omega
+      have hshort : a.take n = (xnode n).hist.take n := by
+        have := congrArg (fun l => l.take n) hfull
+        simpa [List.take_take, Nat.min_eq_right hn] using this
+      have hprefix : a.take n <+: (xnode n).hist := by
+        have h := (List.take_prefix n (xnode n).hist)
+        simpa [hshort] using h
+      exact Descriptive.Tree.mem_of_prefix hprefix (xnode n).mem
+    have ha_body : a ∈ Descriptive.Tree.body S.pre.subtree := by
+      refine Descriptive.Tree.mem_body_of_take (m := 0) (T := S.pre.subtree) (x := a) ?_
+      intro n hn
+      simpa using ha_take_mem n
+    let aBody : Descriptive.Tree.body S.pre.subtree := ⟨a, ha_body⟩
+    rcases hSwin aBody.prop with ⟨ha_tree, hpay⟩
+    have hpay' : (A ∩ ⋂ n, (aBody.val.get n : Set X)).Nonempty := by
+      have hpay0 :
+          (A ∩ ⋂ n, ((ha_tree : Descriptive.Tree.body (chainTree F.W)).val.get n : Set X)).Nonempty := by
+        simpa [gameBM, interGame, payoffHits, Player.payoff] using hpay.1
+      simpa [hpay.2] using hpay0
+    rcases hpay' with ⟨z, hzA, hzI⟩
+    have hsubset : (⋂ n, (aBody.val.get n : Set X)) ⊆ {y} := by
+      intro z hz
+      have hz_even : ∀ n, z ∈ (aBody.val.get (2 * (n + 1)) : Set X) := by
+        intro n
+        have := (Set.mem_iInter.mp hz) (2 * (n + 1))
+        simpa using this
+      have hy_even : ∀ n, y ∈ (aBody.val.get (2 * (n + 1)) : Set X) := by
+        intro n
+        have hyopen : y ∈ Node.openSet (xnode (n + 1)) := hyxnode (n + 1)
+        have hyLast :
+            y ∈ ((xnode (n + 1)).hist.getLast (Node.ne_nil (xnode (n + 1))) : Set X) :=
+          (Node.openSet_subset_last (xnode (n + 1))) hyopen
+        have hlen' := hist_len (n + 1)
+        have hi : 2 * (n + 1) < (xnode (n + 1)).hist.length := by
+          simp [hlen']
+        have haP :
+            aBody.val ∈ Stream'.Discrete.principalOpen (xnode (n + 1)).hist := by
+          apply (Stream'.Discrete.principalOpen_iff_restrict
+            (a := aBody.val) (x := (xnode (n + 1)).hist)).2
+          have := ha_take_full (n + 1)
+          simpa [hlen'] using this.symm
+        have hidx := (Stream'.Discrete.principalOpen_index (a := aBody.val)
+          (x := (xnode (n + 1)).hist)).1 haP
+        have hget :
+            aBody.val.get (2 * (n + 1)) =
+              (xnode (n + 1)).hist[2 * (n + 1)]'hi := by
+          exact hidx _ hi
+        have hlast :
+            (xnode (n + 1)).hist.getLast (Node.ne_nil (xnode (n + 1))) =
+              (xnode (n + 1)).hist[2 * (n + 1)]'hi := by
+          simp [List.getLast_eq_getElem, hlen']
+        simpa [hget, hlast] using hyLast
+      have hdist0 : dist z y = 0 := by
+        by_contra hne
+        have hpos : 0 < dist z y := lt_of_le_of_ne dist_nonneg (Ne.symm hne)
+        have hpos' : 0 < dist z y / 2 := by nlinarith
+        rcases exists_nat_one_div_lt hpos' with ⟨N, hN⟩
+        rcases nextMove_shrink_subset_ball (F := F) (S := S) (x := xnode N) (hLB := hLB)
+          (U := U N) (n := N) with ⟨c, r, hrpos, hrlt, hsub⟩
+        have hlastmove :
+            (aBody.val.get (2 * (N + 1)) : Set X) =
+              (nextMove_shrink (F := F) (S := S) (xnode N) hLB (U N) N : Set X) := by
+          have hlen' := hist_len (N + 1)
+          have hi : 2 * (N + 1) < (xnode (N + 1)).hist.length := by
+            simp [hlen']
+          have haP :
+              aBody.val ∈ Stream'.Discrete.principalOpen (xnode (N + 1)).hist := by
+            apply (Stream'.Discrete.principalOpen_iff_restrict
+              (a := aBody.val) (x := (xnode (N + 1)).hist)).2
+            have := ha_take_full (N + 1)
+            simpa [hlen'] using this.symm
+          have hidx := (Stream'.Discrete.principalOpen_index (a := aBody.val)
+            (x := (xnode (N + 1)).hist)).1 haP
+          have hget :
+              aBody.val.get (2 * (N + 1)) =
+                (xnode (N + 1)).hist[2 * (N + 1)]'hi := by
+            exact hidx _ hi
+          have hlast :
+              (xnode (N + 1)).hist.getLast (Node.ne_nil (xnode (N + 1))) =
+                (xnode (N + 1)).hist[2 * (N + 1)]'hi := by
+            simp [List.getLast_eq_getElem, hlen']
+          have hlast' :
+              (xnode (N + 1)).hist.getLast (Node.ne_nil (xnode (N + 1))) =
+                (nextMove_shrink (F := F) (S := S) (xnode N) hLB (U N) N : Set X) := by
+            simp [hxnode_child N, childNode_shrink, childNode, nextMove_shrink, nextMove,
+              List.append_assoc]
+          calc
+            (aBody.val.get (2 * (N + 1)) : Set X) =
+                ((xnode (N + 1)).hist[2 * (N + 1)] : Set X) := by
+                  simpa using congrArg (fun t : F.W => (t : Set X)) hget
+            _ = (xnode (N + 1)).hist.getLast (Node.ne_nil (xnode (N + 1))) := by
+                  simp [hlast]
+            _ = (nextMove_shrink (F := F) (S := S) (xnode N) hLB (U N) N : Set X) := hlast'
+        have hzball : z ∈ Metric.ball c r := by
+          have hz' : z ∈ (aBody.val.get (2 * (N + 1)) : Set X) := hz_even N
+          have : z ∈ (nextMove_shrink (F := F) (S := S) (xnode N) hLB (U N) N : Set X) := by
+            simpa [hlastmove] using hz'
+          exact hsub this
+        have hyball : y ∈ Metric.ball c r := by
+          have hy' : y ∈ (aBody.val.get (2 * (N + 1)) : Set X) := hy_even N
+          have : y ∈ (nextMove_shrink (F := F) (S := S) (xnode N) hLB (U N) N : Set X) := by
+            simpa [hlastmove] using hy'
+          exact hsub this
+        have hdist_le : dist z y ≤ 2 * r := by
+          have hzle : dist z c ≤ r := by
+            have : dist z c < r := by simpa [Metric.mem_ball] using hzball
+            exact le_of_lt this
+          have hyle : dist y c ≤ r := by
+            have : dist y c < r := by simpa [Metric.mem_ball] using hyball
+            exact le_of_lt this
+          have htri : dist z y ≤ dist z c + dist c y := dist_triangle z c y
+          have htri' : dist z y ≤ dist z c + dist y c := by simpa [dist_comm] using htri
+          linarith
+        have hlt : 2 * r < dist z y := by
+          have hN' : shrinkRadius (n := N) < dist z y / 2 := by
+            simpa [shrinkRadius] using hN
+          have h1 : 2 * r < 2 * shrinkRadius (n := N) := by
+            have hpos : 0 < (2 : ℝ) := by norm_num
+            exact (mul_lt_mul_of_pos_left hrlt hpos)
+          have h2 : 2 * shrinkRadius (n := N) < dist z y := by
+            have hpos : 0 < (2 : ℝ) := by norm_num
+            have hmul := (mul_lt_mul_of_pos_left hN' hpos)
+            have h2' : 2 * (dist z y / 2) = dist z y := by nlinarith
+            simpa [h2'] using hmul
+          exact lt_trans h1 h2
+        have hcontr : dist z y < dist z y := lt_of_le_of_lt hdist_le hlt
+        exact (lt_irrefl _ hcontr)
+      have hzEq : z = y := dist_eq_zero.mp hdist0
+      simp [Set.mem_singleton_iff, hzEq]
+    have hz_in : z ∈ {y} := hsubset hzI
+    have hzEq : z = y := by simpa [Set.mem_singleton_iff] using hz_in
+    simpa [hzEq] using hzA
+  -- G is a dense Gδ in the open subspace U0, hence U0 \ A is meagre
+  let Gsub : Set {x // x ∈ U0} := {y | (y : X) ∈ G}
+  letI : BaireSpace {x // x ∈ U0} := (IsOpen.baireSpace (s := U0) hU0o)
+  have hGsub_Gδ : IsGδ Gsub := by
+    refine (isGδ_iff_eq_iInter_nat).2 ?_
+    refine ⟨fun n => {y : {x // x ∈ U0} | (y : X) ∈ LevelOpen n}, ?_, ?_⟩
+    · intro n
+      simpa using (LevelOpen_open n).preimage (continuous_subtype_val)
+    · ext y; simp [G, Gsub, LevelOpen]
+  have hGsub_dense : Dense Gsub := by
+    refine dense_iff_inter_open.2 ?_
+    intro O hOo hOne
+    rcases isOpen_induced_iff.mp hOo with ⟨O', hO'open, rfl⟩
+    rcases hOne with ⟨⟨x, hxU0⟩, hxO⟩
+    have hxO' : x ∈ O' := by simpa using hxO
+    have hO1open : IsOpen (O' ∩ U0) := hO'open.inter hU0o
+    have hO1sub : O' ∩ U0 ⊆ U0 := by intro y hy; exact hy.2
+    have hO1ne : (O' ∩ U0).Nonempty := ⟨x, hxO', hxU0⟩
+    rcases hGdense (O' ∩ U0) hO1open hO1sub hO1ne with ⟨y, hyO1, hyG⟩
+    refine ⟨⟨y, hyO1.2⟩, ?_⟩
+    refine ⟨?_, ?_⟩
+    · exact hyO1.1
+    · exact hyG
+  have hres : Gsub ∈ residual {x // x ∈ U0} :=
+    (mem_residual (X := {x // x ∈ U0})).2 ⟨Gsub, subset_rfl, hGsub_Gδ, hGsub_dense⟩
+  let m : Set {x // x ∈ U0} := {x | (x : X) ∈ U0 \ A}
+  have hmeagre_sub : IsMeagre (m : Set {x // x ∈ U0}) := by
+    have : mᶜ ∈ residual {x // x ∈ U0} := by
+      have hsub : Gsub ⊆ mᶜ := by
+        intro y hy
+        have hy' : (y : X) ∈ G := hy
+        have hyA : (y : X) ∈ A := hGsubA hy'
+        have hyU0 : (y : X) ∈ U0 := y.property
+        simp [m, Set.mem_diff, hyA]
+      exact Filter.mem_of_superset hres hsub
+    simpa [IsMeagre] using this
+  have hmeagre : IsMeagre (U0 \ A) := by
+    have hmeagre' :
+        IsMeagre ((m : Set {x // x ∈ U0}) : Set X) :=
+      IsMeagre.image_val (s := U0) (m := m) hmeagre_sub
+    have hco :
+        ((m : Set {x // x ∈ U0}) : Set X) = U0 \ A := by
+      ext x
+      constructor
+      · intro hx
+        rcases hx with ⟨y, hy, rfl⟩
+        exact hy
+      · intro hx
+        exact ⟨⟨x, hx.1⟩, hx, rfl⟩
+    simpa [hco] using hmeagre'
+  exact ⟨U0, hU0o, hU0ne, hmeagre⟩
+
+theorem basis_invariant_zero_of_existsWinning_uncond
+    (F : FamilyBM X) (hLB : F.LocalBasis) (A : Set X)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  obtain ⟨U0, hU0o, hU0ne, hMeagre⟩ :=
+    exists_open_nonempty_meagre_diff_of_existsWinning_zero_uncond
+      (X := X) (F := F) (hLB := hLB) (A := A) hWin
+  exact existsWinning_zero_of_isMeagre_diff (X := X) (A := A) (U0 := U0) hU0o hU0ne hMeagre
+
+end UnconditionalLocalBasis
+
+/-!
+### Baire‑property corollaries
+
+The following lemmas use `BaireMeasurableSet A` to upgrade the weak
+“non‑meagre” conclusion into a *comeagre‑on‑some‑open* statement. This is
+standard in the classical Banach–Mazur theory, but **not** minimal for the
+one‑way implications proved above.
+-/
+
+omit [CompleteSpace X] [Nonempty X] in
+theorem exists_open_nonempty_meagre_diff_of_not_isMeagre_baire (A : Set X)
+    (hA : BaireMeasurableSet A) (hnot : ¬ IsMeagre A) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  let U : TopologicalSpace.Opens X := dom (A := A)
+  have hres : A =ᵇ (U : Set X) := residual.dom.eq_residual (A := A) hA
+  have hdiff : IsMeagre ((U : Set X) \ A) := by
+    have h := (Filter.eventuallyEq_set' (l := residual X) (s := A) (t := (U : Set X))).1 hres
+    simpa [IsMeagre] using h.2
+  have hU_nonempty : (U : Set X).Nonempty := by
+    by_contra hUempty
+    have hUeq : (U : Set X) = ∅ := (Set.not_nonempty_iff_eq_empty).1 hUempty
+    have hAmeagre : IsMeagre A := by
+      have h := (Filter.eventuallyEq_set' (l := residual X) (s := A) (t := (U : Set X))).1 hres
+      have hAU : IsMeagre (A \ (U : Set X)) := by
+        simpa [IsMeagre] using h.1
+      simpa [hUeq] using hAU
+    exact hnot hAmeagre
+  exact ⟨(U : Set X), U.isOpen, hU_nonempty, hdiff⟩
+
+omit [CompleteSpace X] [Nonempty X] in
+theorem exists_open_nonempty_meagre_diff_of_existsWinning_zero_baire (F : FamilyBM X) (A : Set X)
+    (hA : BaireMeasurableSet A)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  have hnot : ¬ IsMeagre A :=
+    existsWinning_zero_imp_not_isMeagre (F := F) (A := A) hWin
+  exact exists_open_nonempty_meagre_diff_of_not_isMeagre_baire (X := X) (A := A) hA hnot
+
+theorem existsWinning_zero_of_not_isMeagre_baire (A : Set X) (hA : BaireMeasurableSet A)
+    (hnot : ¬ IsMeagre A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  obtain ⟨U0, hU0o, hU0ne, hMeagre⟩ :=
+    exists_open_nonempty_meagre_diff_of_not_isMeagre_baire (X := X) (A := A) hA hnot
+  exact existsWinning_zero_of_isMeagre_diff (A := A) (U0 := U0) hU0o hU0ne hMeagre
+
+theorem basis_invariant_zero_of_existsWinning_baire (F : FamilyBM X) (A : Set X)
+    (hA : BaireMeasurableSet A)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  obtain ⟨U0, hU0o, hU0ne, hMeagre⟩ :=
+    exists_open_nonempty_meagre_diff_of_existsWinning_zero_baire (X := X) (F := F) (A := A) hA hWin
+  exact existsWinning_zero_of_isMeagre_diff (A := A) (U0 := U0) hU0o hU0ne hMeagre
+
+theorem existsWinning_one_iff_isMeagre_closedBall_baire (A : Set X) (hA : BaireMeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.one ↔
+      IsMeagre A := by
+  constructor
+  · intro hWin
+    by_contra hAmeagre
+    have hzero : (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero :=
+      existsWinning_zero_of_not_isMeagre_baire (X := X) (A := A) hA hAmeagre
+    have hne : [] ∈ (gameBM (X := X) (F := closedBallFamily (X := X)) A).tree := by
+      simpa [gameBM, interGame] using
+        (nil_mem_chainTree (V := (closedBallFamily (X := X)).W))
+    exact (GaleStewartGame.Game.ExistsWinning.not_both_winning
+      (G := gameBM (X := X) (F := closedBallFamily (X := X)) A) (p := Player.one) hWin hne) hzero
+  · intro hMeagre
+    exact existsWinning_one_of_isMeagre_BM (F := closedBallFamily (X := X)) (A := A) hMeagre
+
+theorem existsWinning_zero_iff_comeagre_closedBall_baire (A : Set X) (hA : BaireMeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  constructor
+  · intro hWin
+    have hnot : ¬ IsMeagre A := by
+      intro hMeagre
+      have hOne : (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.one :=
+        existsWinning_one_of_isMeagre_BM (F := closedBallFamily (X := X)) (A := A) hMeagre
+      have hne : [] ∈ (gameBM (X := X) (F := closedBallFamily (X := X)) A).tree := by
+        simpa [gameBM, interGame] using
+          (nil_mem_chainTree (V := (closedBallFamily (X := X)).W))
+      exact (GaleStewartGame.Game.ExistsWinning.not_both_winning
+        (G := gameBM (X := X) (F := closedBallFamily (X := X)) A) (p := Player.zero) hWin hne) hOne
+    exact exists_open_nonempty_meagre_diff_of_not_isMeagre_baire (X := X) (A := A) hA hnot
+  · rintro ⟨U0, hU0o, hU0ne, hMeagre⟩
+    exact existsWinning_zero_of_isMeagre_diff (A := A) (U0 := U0) hU0o hU0ne hMeagre
+
+theorem basis_invariant_zero_closedBall_baire (A : Set X) (hA : BaireMeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) :=
+  existsWinning_zero_iff_comeagre_closedBall_baire (X := X) (A := A) hA
+
+/-!
+### Borel corollaries (Polish-friendly)
+
+In Polish spaces, Borel sets are Baire-measurable, so the preceding lemmas apply
+without mentioning `BaireMeasurableSet` explicitly. We record the convenient
+corollaries for `MeasurableSet`.
+-/
+
+section Borel
+
+variable [MeasurableSpace X] [BorelSpace X]
+
+omit [CompleteSpace X] [Nonempty X] in
+theorem exists_open_nonempty_meagre_diff_of_not_isMeagre_borel (A : Set X)
+    (hA : MeasurableSet A) (hnot : ¬ IsMeagre A) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  exact exists_open_nonempty_meagre_diff_of_not_isMeagre_baire (X := X) (A := A)
+    (hA.baireMeasurableSet) hnot
+
+omit [CompleteSpace X] [Nonempty X] in
+theorem exists_open_nonempty_meagre_diff_of_existsWinning_zero_borel (F : FamilyBM X) (A : Set X)
+    (hA : MeasurableSet A)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  exact exists_open_nonempty_meagre_diff_of_existsWinning_zero_baire (X := X) (F := F) (A := A)
+    (hA.baireMeasurableSet) hWin
+
+theorem existsWinning_zero_of_not_isMeagre_borel (A : Set X) (hA : MeasurableSet A)
+    (hnot : ¬ IsMeagre A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  exact existsWinning_zero_of_not_isMeagre_baire (X := X) (A := A) (hA.baireMeasurableSet) hnot
+
+theorem basis_invariant_zero_of_existsWinning_borel (F : FamilyBM X) (A : Set X)
+    (hA : MeasurableSet A)
+    (hWin : (gameBM (X := X) (F := F) A).ExistsWinning Player.zero) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero := by
+  exact basis_invariant_zero_of_existsWinning_baire (X := X) (F := F) (A := A)
+    (hA.baireMeasurableSet) hWin
+
+theorem existsWinning_one_iff_isMeagre_closedBall_borel (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.one ↔
+      IsMeagre A := by
+  exact existsWinning_one_iff_isMeagre_closedBall_baire (X := X) (A := A) (hA.baireMeasurableSet)
+
+theorem existsWinning_zero_iff_comeagre_closedBall_borel (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  exact existsWinning_zero_iff_comeagre_closedBall_baire (X := X) (A := A) (hA.baireMeasurableSet)
+
+theorem basis_invariant_zero_closedBall_borel (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) :=
+  existsWinning_zero_iff_comeagre_closedBall_borel (X := X) (A := A) hA
+
+end Borel
+
+end CompleteMetric
+
+section Polish
+
+open Topology Metric
+
+variable {X : Type*} [MetricSpace X] [CompleteSpace X] [Nonempty X]
+variable [MeasurableSpace X] [BorelSpace X]
+variable [SecondCountableTopology X]
+
+/-!
+### Polish-space Banach–Mazur (Borel payoff sets)
+
+In Polish spaces, Borel sets are Baire-measurable, so the standard
+Banach–Mazur characterizations can be stated with `MeasurableSet` alone.
+These are restatements of the `Borel` corollaries from the complete-metric
+section, but packaged for the Polish setting.
+-/
+
+omit [CompleteSpace X] [SecondCountableTopology X] in
+theorem exists_open_nonempty_meagre_diff_of_existsWinning_zero_polish (A : Set X)
+    (hA : MeasurableSet A)
+    (hWin : (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero) :
+    ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  exact exists_open_nonempty_meagre_diff_of_existsWinning_zero_borel
+    (X := X) (F := closedBallFamily (X := X)) (A := A) hA hWin
+
+omit [SecondCountableTopology X] in
+theorem existsWinning_zero_iff_comeagre_closedBall_polish (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) := by
+  exact existsWinning_zero_iff_comeagre_closedBall_borel (X := X) (A := A) hA
+
+omit [SecondCountableTopology X] in
+theorem existsWinning_one_iff_isMeagre_closedBall_polish (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.one ↔
+      IsMeagre A := by
+  exact existsWinning_one_iff_isMeagre_closedBall_borel (X := X) (A := A) hA
+
+omit [SecondCountableTopology X] in
+theorem basis_invariant_zero_closedBall_polish (A : Set X) (hA : MeasurableSet A) :
+    (gameBM (X := X) (F := closedBallFamily (X := X)) A).ExistsWinning Player.zero ↔
+      ∃ U0, IsOpen U0 ∧ U0.Nonempty ∧ IsMeagre (U0 \ A) :=
+  existsWinning_zero_iff_comeagre_closedBall_polish (X := X) (A := A) hA
+
+/-!
+### Unconditional Banach–Mazur direction (no measurability)
+
+The next results (to be completed) will show that a winning strategy for
+`Player.zero` yields a dense `Gδ` subset of `A`, hence `A` is comeagre on
+some nonempty open set. The proof follows the classical Oxtoby–Telgársky
+construction using disjoint refinements inside open sets and the Baire
+category theorem for complete metric spaces.
+-/
+
+-- (Unconditional section to be completed.)
+
+end Polish
+
+end BanachMazur
+
 namespace Choquet
-variable (X)
-variable [TopologicalSpace X]
-def game := interGame (X := X) {A | IsOpen A ∧ A.Nonempty} {∅}
-def IsChoquet := (game X).ExistsWinning Player.one
+
+open Topology
+
+variable (X : Type*) [TopologicalSpace X] [Nonempty X]
+
+/-- The (weak) Banach–Mazur game `BM(X)`: players choose nonempty open sets decreasing by inclusion;
+Player `one` wins iff the intersection is nonempty. -/
+def BMGame : Game {U : Set X | IsOpen U ∧ U.Nonempty} :=
+  interGame (X := X)
+    (V := {U : Set X | IsOpen U ∧ U.Nonempty})
+    (PO := {s | s.Nonempty})
+
+/-- A space is *weakly α-favorable* if Player `one` has a winning strategy in `BMGame`. -/
+def IsWeaklyAlphaFavorable : Prop :=
+  (BMGame X).ExistsWinning Player.one
+
+lemma BMGame_eq_gameBM_univ :
+    BMGame X = BanachMazur.gameBM (X := X) (F := BanachMazur.openFamilyBM (X := X)) Set.univ := by
+  ext s <;> simp [BMGame, BanachMazur.gameBM, BanachMazur.openFamilyBM, BanachMazur.payoffHits]
+
+lemma IsWeaklyAlphaFavorable_iff :
+    IsWeaklyAlphaFavorable X ↔
+      (BanachMazur.gameBM (X := X) (F := BanachMazur.openFamilyBM (X := X)) Set.univ).ExistsWinning Player.one := by
+  simp [IsWeaklyAlphaFavorable, BMGame_eq_gameBM_univ]
+
 end Choquet
---TODO: here Banach-Mazur games could be added

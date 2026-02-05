@@ -193,7 +193,7 @@ lemma mem_winAsap_subtree_of_no_prefix
   apply subtree_induction (S := ⊤) (by simpa); intro n hn _ hp
   simp [winAsap]; split_ifs with hW
   · cases h (by
-      simp [Nat.lt_iff_add_one_le] at hn
+      simp at hn
       simpa [List.take_append_of_le_length, hn] using hW.extend (x.drop n))
   · trivial
 lemma winAsap_subtree {x} (h : WinningPrefix G p x) :

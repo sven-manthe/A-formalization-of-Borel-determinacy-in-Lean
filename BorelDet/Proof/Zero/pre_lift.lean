@@ -36,13 +36,24 @@ lemma game_tree_sub : H.game.tree ≤ subAt G.tree (H.liftShort.val.map Prod.fst
 lemma game_pruned : IsPruned H.game.tree := (getTree_ne_and_pruned _).2
 lemma game_closed : IsClosed H.game.payoff := by
   apply IsClosed.preimage continuous_subtype_val
+  have hodd : (H.x.val.take (2 * k + 1)).length % 2 = 1 := by
+    have hlen : (H.x.val.take (2 * k + 1)).length = 2 * k + 1 := by
+      simp [List.length_take, Nat.min_eq_left H.hlvl]
+    have h0 : (2 * k) % 2 = 0 := Nat.mod_eq_zero_of_dvd (Nat.dvd_mul_right 2 k)
+    have h' : (2 * k + 1) % 2 = 1 := by
+      calc
+        (2 * k + 1) % 2 = ((2 * k) % 2 + 1 % 2) % 2 := by simp [Nat.add_mod]
+        _ = (0 + 1) % 2 := by simp [h0]
+        _ = 1 := by simp
+    simp [hlen]
   rw [← (Topology.IsClosedEmbedding.subtypeVal (body_isClosed _)).isClosed_iff_image_isClosed,
-    G.residual_payoff_odd _ (by simp [Nat.add_mod]), compl_compl]
+    G.residual_payoff_odd _ hodd, compl_compl]
   exact hyp.closed.preimage <| body.append_con _
 
 @[simps] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : PreLift hyp where
   x := Tree.take n H.x
-  hlvl := by simp [h]
+  hlvl := by
+    simpa [List.length_take] using (le_min h H.hlvl)
   R := H.R
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
   ext1 <;> [ext1; skip] <;> simp [h']
@@ -100,8 +111,13 @@ attribute [simp] h'lvl
 @[simp] lemma liftShort_val_map :
   H.liftShort.val.map (α := no_index _) Prod.fst = H.x.val.take (2 * k + 1) := by
   rw [H.liftShort.val.eq_take_concat (2 * k) (by simp)]
-  conv => rhs; rw [(H.x.val.take (2 * k + 1)).eq_take_concat (2 * k) (by simp),
-    List.getElem_take, H.conShort]
+  have hxlen : (H.x.val.take (2 * k + 1)).length = 2 * k + 1 := by
+    simp [List.length_take, Nat.min_eq_left H.hlvl]
+  have hxlt : 2 * k < (H.x.val.take (2 * k + 1)).length := by
+    simp [hxlen]
+  conv => rhs
+  rw [(H.x.val.take (2 * k + 1)).eq_take_concat (2 * k) (by simpa using hxlen),
+    List.getElem_take (h := hxlt), H.conShort]
   simp only [PreLift.liftShort, ExtensionsAt.valT'_coe, List.map_append, List.map_cons,
     List.map_nil, List.take_take, List.append_cancel_right_eq]
   rw [ExtensionsAt.val'_take_of_eq _ (by simp)]; show (π _).val = _; simp
@@ -196,18 +212,29 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
   R := H.R
   hlvl := by simp
 @[simp] lemma extensionPreLift_take :
-  (H.extensionPreLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toPreLift := by
+  (H.extensionPreLift hp R).take (H.x.val.length (α := no_index _)) (by simpa using H.hlvl) = H.toPreLift := by
   ext1 <;> simp [extensionPreLift, extensionMap]
 @[simp] lemma extensionPreLift_liftShort : (H.extensionPreLift hp R).liftShort = H.liftShort := by
   rw [← extensionPreLift_take, PreLift.liftShort_take]
 @[simp] lemma extensionPreLift_game : (H.extensionPreLift hp R).game = H.game := by
-  ext <;> simp [PreLift.game_tree, PreLift.game_payoff]
+  apply Game.ext'
+  · simp [PreLift.game_tree]
+  · have ht : (H.extensionMap hp R).val'.take (2 * k + 1) = H.x.val.take (2 * k + 1) := by
+      simpa using (H.extensionMap_take (hp := hp) (R := R) (n := 2 * k + 1) H.hlvl)
+    have htree : (H.extensionPreLift hp R).game.tree = H.game.tree := by
+      simp [PreLift.game_tree]
+    have hbody : body (H.extensionPreLift hp R).game.tree = body H.game.tree :=
+      congrArg body htree
+    ext x
+    simp [PreLift.game_payoff, ht, hbody]
 @[simps! toPreLift] def extensionLift : Lift hyp where
   toPreLift := H.extensionPreLift hp R
-  h'lvl := by simp
+  h'lvl := by
+    have : 2 * k + 2 ≤ H.x.val.length + 1 := le_trans H.h'lvl (Nat.le_succ _)
+    simpa [extensionPreLift, extensionMap] using this
   conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort; exact H.hlvl
 @[simp] lemma extensionLift_take :
-  (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toLift := by
+  (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) H.h'lvl = H.toLift := by
   ext1; apply extensionPreLift_take
 end
 end WLLift'

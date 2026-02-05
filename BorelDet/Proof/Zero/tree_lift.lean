@@ -40,7 +40,8 @@ attribute [simp_lengths] preLift_x_coe
 @[simps] def take (n : ℕ) (hk : 2 * k + 1 ≤ n) : TreeLift hyp where
   R := H.R
   x := Tree.take n H.x
-  hlvl := by simp [hk]
+  hlvl := by
+    simpa [List.length_take] using (le_min hk H.hlvl)
 attribute [simp_lengths] preLift_x_coe take_x
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by ext1 <;> simp [h']
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
@@ -154,9 +155,17 @@ lemma x_mem_tree_short' h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) P
     · simp [ResStrategy.fromMap]; rfl
     · synth_isPosition
   · ext1
-    simp [← List.take_append_getElem, ExtensionsAt.val']; congr <;> simp [PreLift.liftShort];
-    · rw [ExtensionsAt.val'_take_of_eq] <;> simp
-    · rw [ExtensionsAt.val'_get_last_of_eq _ (by simp)]; rfl
+    have hlen :
+        (pInv π ((stratMap' H.R).pre.subtree_incl (Tree.take (2 * k) H.x))).val.length = 2 * k := by
+      -- `Tree.take` has length `2*k` since `H.hlvl` ensures the original length is larger.
+      have hxle : 2 * k ≤ H.x.val.length := by linarith [H.hlvl]
+      simp [List.length_take, hxle]
+    have hpre :
+        Tree.take (2 * k) H.preLift.x =
+          (stratMap' H.R).pre.subtree_incl (Tree.take (2 * k) H.x) := by
+      ext1; simp [take_coe, subtree_incl_coe]
+    simp [← List.take_append_getElem, ExtensionsAt.val', PreLift.liftShort,
+      strategyEquivSystem, hpre]
 lemma x_mem_tree_short h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Player.zero) :
   (H.lift h').liftShort.val[n]'(by simpa [Nat.lt_iff_add_one_le]) =
   (H.R (pInv π ((stratMap' H.R).pre.subtree_incl (Tree.take n H.x))) (by simpa)).val := by

@@ -10,7 +10,7 @@ noncomputable section
 
 namespace Lift'
 variable (H : Lift' hyp) (hp : IsPosition H.x.val Player.one)
-  (R : ResStrategy ⟨_, T'⟩ Player.one H.x.val.length) (hR : R.res (by simp) = H.R)
+  (R : ResStrategy ⟨_, T'⟩ Player.one H.x.val.length) (hR : R.res (by simpa using H.hlvl) = H.R)
 def extension := R H.lift (by synth_isPosition) (by simp)
 def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
 @[simp] lemma extension_take :
@@ -22,13 +22,31 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
 @[simps] def extensionLift : Lift hyp where
   x := (H.extensionMap hp R).valT'
   R := H.R
-  hlvl := by simp
+  hlvl := by
+    have hlen : (H.extensionMap hp R).val'.length = H.x.val.length + 1 := by
+      simp [ExtensionsAt.val'_length]
+    have h : 2 * k + 1 ≤ H.x.val.length + 1 := le_trans H.hlvl (Nat.le_succ _)
+    simp [hlen, h]
   liftTree := H.liftTree
   htree := by
-    obtain ⟨S, hS⟩ := H.htree;  use cast (by simp) S
-    rw [hS]; symm; apply cast_subtree (by simp) rfl
+    obtain ⟨S, hS⟩ := H.htree
+    have htake :
+        List.take (2 * k + 1) (H.extensionMap hp R).val' = H.x.val.take (2 * k + 1) := by
+      simpa using (H.extensionMap_take (hp := hp) (R := R) (n := 2 * k + 1) H.hlvl)
+    have hsub :
+        subAt G.tree (List.take (2 * k + 1) (H.extensionMap hp R).val') =
+          subAt G.tree (List.take (2 * k + 1) H.x.val) := by
+      simp [htake]
+    have hqs :
+        QuasiStrategy (subAt G.tree (List.take (2 * k + 1) (H.extensionMap hp R).val')) Player.one =
+          QuasiStrategy (subAt G.tree (List.take (2 * k + 1) H.x.val)) Player.one := by
+      simp [hsub]
+    use cast hqs.symm S
+    rw [hS]
+    symm
+    apply cast_subtree hsub.symm rfl
 @[simp] lemma extensionLift_take :
-  (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toLift := by
+  (H.extensionLift hp R).take (H.x.val.length (α := no_index _)) (by simpa using H.hlvl) = H.toLift := by
   ext1 <;> [ext1; skip] <;> simp [extensionMap]
 @[simp] lemma extensionLift_liftShort : (H.extensionLift hp R).liftShort = H.liftShort := by
   rw [← extensionLift_take, Lift.liftShort_take]
@@ -55,9 +73,12 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
         · simp [extensionMap]
 attribute [simp_lengths] extensionLift_x extensionLift'_toLift
 @[simp] lemma extensionLift'_game : (H.extensionLift' hp R hR).game = H.game := by
-  ext <;> simp [PreLift.game]
+  have htake :
+      List.take (2 * k + 1) (H.extensionMap hp R).val' = H.x.val.take (2 * k + 1) := by
+    simpa using (H.extensionMap_take (hp := hp) (R := R) (n := 2 * k + 1) H.hlvl)
+  ext <;> simp [PreLift.game, htake, extensionLift_wonPos]
 @[simp] lemma extensionLift'_take :
-  (H.extensionLift' hp R hR).take (H.x.val.length (α := no_index _)) (by simp) = H := by
+  (H.extensionLift' hp R hR).take (H.x.val.length (α := no_index _)) (by simpa using H.hlvl) = H := by
   ext1; apply extensionLift_take
 end Lift'
 
@@ -115,7 +136,7 @@ def Losable (H : PreLift hyp) := ∃ h : H.Losable', (LLift.mk _ h).toLift.Con
 lemma Losable.losable_of_le {H H' : PreLift hyp} (hL : H'.Losable) (h : H ≤ H') :
   H.Losable := by
   use hL.1.losable'_of_le h; (conv => rhs; rhs; lhs; rw [← h])
-  convert hL.2.take (n := H.x.val.length) (h := by simp); ext1
+  convert hL.2.take (n := H.x.val.length) (h := by simpa using H.hlvl); ext1
   · simp
   · simp only [LLift.toLift_liftTree, LLift.S, Lift.take_liftTree]; congr! 1; simp
 
@@ -136,7 +157,7 @@ lemma winnable : H.Winnable := by
   rw [List.prefix_iff_eq_take] at hux
   simpa [AllWinning, game_payoff, Set.eq_univ_iff_forall, ← hux] using
     fun a _ ↦ ⟨u, ⟨hu, principalOpen_append_nil a u⟩⟩
-lemma exists_prefix : ∃ n h, (H.take n h).Won := ⟨H.x.val.length, by simpa using H.won⟩
+lemma exists_prefix : ∃ n h, (H.take n h).Won := ⟨H.x.val.length, H.hlvl, by simpa using H.won⟩
 def minLength := Nat.find H.exists_prefix
 @[simp] lemma minLength_le : H.minLength ≤ H.x.val.length (α := no_index _) :=
   Nat.find_le ⟨H.hlvl, by simpa using H.won⟩
@@ -201,23 +222,27 @@ lemma u_eq_le {H H' : WLift hyp} (h : H.toPreLift ≤ H'.toPreLift) : HEq H.u H'
   rwa [Subtype.heq_iff_coe_eq (by simp)] at this
 lemma uprop' : (WLift.mk _ H.min_prefix).u.val ∈ H.takeMin.WonPos := by simp
 lemma uprop'_choose : HEq H.u.prop.choose H.uprop'.choose := by
+  have hmin : min (2 * k + 1) H.minLength = 2 * k + 1 := by
+    exact min_eq_left H.le_minLength
   congr 1
-  · simp [List.take_take]
+  · simp [List.take_take, hmin]
   · congr! 1 with S1 S2 heq
-    · simp [List.take_take]
-    · rw [← cast_eq_iff_heq (e := by simp [List.take_take])] at heq
+    · simp [List.take_take, hmin]
+    · rw [← cast_eq_iff_heq (e := by simp [List.take_take, hmin])] at heq
       have : (H.extend S1).liftShort = (H.takeMin.extend S2).liftShort := by
         simp [takeMin, extend, Lift.liftShort, Lift.liftVeryShort]; congr! 5
         · apply Subtype.ext; simp
         · simp
-        · rw [← heq]; symm; apply cast_subtree; simp [List.take_take]; rfl
+        · rw [← heq]; symm; apply cast_subtree; simp [List.take_take, hmin]; rfl
       simp only [Lift.PreWonPos, ne_eq, extend_toPreLift, u_min_prefix, takeMin_x_coe]; congr! 6
       · congr!
-      · simp [List.take_take]
+      · simp [List.take_take, hmin]
   · apply proof_irrel_heq
 lemma toLift_liftTree' : H.toLift.liftTree = H.uprop'.choose.1.subtree := by
-  simp only [toLift_liftTree, S]; congr! 1; simp [List.take_take]
-  apply hEq_fst; simp [List.take_take]; congr!; exact H.uprop'_choose
+  have hmin : min (2 * k + 1) H.minLength = 2 * k + 1 := by
+    exact min_eq_left H.le_minLength
+  simp only [toLift_liftTree, S]; congr! 1; simp [List.take_take, hmin]
+  apply hEq_fst; simp [List.take_take, hmin]; congr!; exact H.uprop'_choose
 lemma toLift_mono {H H' : WLift hyp} (h : H.toPreLift ≤ H'.toPreLift) :
   H.toLift.liftTree = H'.toLift.liftTree := by
   simp_rw [toLift_liftTree']; have hu := u_eq_le h; rw [Subtype.heq_iff_coe_eq] at hu

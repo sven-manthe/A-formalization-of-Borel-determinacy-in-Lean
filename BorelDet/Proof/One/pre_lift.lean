@@ -23,7 +23,8 @@ lemma gameTree_eq : subAt (getTree (pInv π (Tree.take (2 * k) H.x)).val) [H.x.v
 
 @[simps] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : PreLift hyp where
   x := Tree.take n H.x
-  hlvl := by simp [h]
+  hlvl := by
+    simpa [List.length_take] using (le_min h H.hlvl)
   R := H.R
 attribute [simp_lengths] take_x
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
@@ -140,7 +141,7 @@ lemma take_le {h} : H.take n h ≤ H := H.toPreLift.take_le (h := h)
 @[simp] lemma take_le_take hm hn : H.take m hm ≤ H.take n hn ↔ m ≤ n ∨ H.x.val.length ≤ n :=
   H.toPreLift.take_le_take hm hn
 lemma eq_take {H H' : Lift hyp} (h : H ≤ H') (ht : H.liftTree = H'.liftTree) :
-  H = H'.take H.x.val.length (by simp) := by ext1; symm; exact h; exact ht
+  H = H'.take H.x.val.length (by simpa using H.hlvl) := by ext1; symm; exact h; exact ht
 lemma liftVal_mono {H H' : Lift hyp} (h : H ≤ H') (ht : H.liftTree = H'.liftTree) :
   H.liftVal <+: H'.liftVal := by rw [eq_take h ht]; simpa using List.take_prefix _ _
 

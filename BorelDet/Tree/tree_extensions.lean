@@ -92,11 +92,20 @@ def extensionsEquiv' (hy : Fixing (y.val.length + 1) f := by as_aux_lemma => syn
 @[simp] lemma extensionsEquiv'_symm_val'
   (hy : Fixing (y.val.length + 1) f) (a : ExtensionsAt (pInv f y)) :
   ((extensionsEquiv' f y hy).symm a).valT' = f a.valT' := by
-  ext
-  simp_rw [ExtensionsAt.valT'_coe, ExtensionsAt.eq_obj, extensionsEquiv', Equiv.symm_trans_apply,
-    Equiv.cast_symm, Equiv.symm_symm, Equiv.cast_apply, Iso.toEquiv_symm_fun, Functor.mapIso_inv,
-    extensionsRes_symm_val', extensions_map_val']
-  simp only [h_length_pInv, cast_val', extensionsRes_val']; rfl
+  ext1
+  dsimp [extensionsEquiv', pointedRes_iso']
+  have hk : (pInv f y).val.length + 1 = y.val.length + 1 := by
+    simp [h_length_pInv]
+  simp (config := { failIfUnchanged := false }) [ExtensionsAt.eq_obj, ← Equiv.cast_symm,
+    Equiv.cast_apply]
+  simp [pointedRes]
+  have hres :
+      ∀ h : a.val' ∈ ((res (y.val.length + 1)).obj S).2,
+        res.val' (k := y.val.length + 1) ⟨a.val', h⟩ = a.valT' := by
+    intro h
+    ext1
+    rfl
+  simp [hres]
 @[simp] lemma extensionsEquiv'_val' (a : ExtensionsAt y) (hy : Fixing (y.val.length + 1) f) :
   (extensionsEquiv' f y hy a).valT' = pInv f a.valT' := by
   obtain ⟨a, rfl⟩ := (extensionsEquiv' f y).symm.surjective a

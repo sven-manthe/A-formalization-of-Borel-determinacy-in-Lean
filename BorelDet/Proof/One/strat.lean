@@ -41,7 +41,8 @@ attribute [simp_lengths] preLift_x_coe
 @[simps] def take (n : ℕ) (hk : 2 * k + 1 ≤ n) : TreeLift hyp where
   R := H.R
   x := Tree.take n H.x
-  hlvlR := by simp [hk]
+  hlvlR := by
+    simpa [List.length_take] using (le_min hk H.hlvl)
 attribute [simp_lengths] take_x
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by ext1 <;> simp [h']
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
@@ -155,7 +156,10 @@ lemma x_mem_tree_short' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Play
   · simp [ResStrategy.fromMap]; rfl
   · synth_isPosition
 lemma x_mem_tree_short (h : n < 2 * k) (hp : IsPosition (H.x.val.take n) Player.one) :
-  (pInvTreeHom_map hyp (H.x.val.take (2 * k)))[n]'(by simpa [Nat.lt_iff_add_one_le]) =
+  (pInvTreeHom_map hyp (H.x.val.take (2 * k)))[n]'(by
+    have hxle : 2 * k ≤ H.x.val.length := by linarith [H.hlvl]
+    -- `take (2*k)` has length `2*k`, so `h` provides the index bound.
+    simpa [pInvTreeHom_map_len, List.length_take, Nat.min_eq_left hxle] using h) =
   (H.R (pInv π ((stratMap' H.R).pre.subtree_incl (Tree.take n H.x))) (by simpa)).val := by
   have h := congr_arg (fun x ↦ x.val[n]?) (H.x_mem_tree_short' h.le hp)
   simp at h; apply Option.some_injective

@@ -51,13 +51,61 @@ include hW in lemma liftMedium_mem : H.toWLift.liftMediumVal ∈ T' := by
       (by simpa using H.game_closed.preimage (body.append_con _)) (H.game_pruned.sub _)
       (by
         intro hS; apply hW; use 1
+        have hxlt : 2 * k + 1 < H.x.val.length :=
+          Nat.lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) H.h'lvl
         have : (H.x.val.drop (2 * k + 1)).take 1 = [H.liftNode] := by
-          rw [List.take_one_drop_eq_of_lt_length (by simp [Nat.lt_iff_add_one_le])]; rfl
+          simpa [Lift.liftNode] using (List.take_one_drop_eq_of_lt_length (l := H.x.val) (n := 2 * k + 1) hxlt)
         simpa only [this] using hS)
     simp_rw [pullSub_body, Set.image_subset_iff]
-    apply subset_trans h; simp [PreLift.game_payoff]
-    intro _
-    simp [Lift.liftNode, ← Stream'.append_eq_cons, ← Stream'.append_append_stream]
+    apply subset_trans h
+    intro a ha
+    -- Unfolding `H.game.payoff` produces a goal about the original game's payoff; handle it explicitly.
+    simp [PreLift.game_payoff] at ha ⊢
+    rcases ha with ⟨⟨hGT, hHgT⟩, hnot⟩
+    -- Use the residual-payoff characterization (odd prefix length) to turn `hnot` into a payoff proof.
+    have hodd : (List.take (2 * k + 1) H.x.val).length % 2 = 1 := by
+      have hlen : (List.take (2 * k + 1) H.x.val).length = 2 * k + 1 := by
+        simp [List.length_take, Nat.min_eq_left (le_trans (Nat.le_succ _) H.h'lvl)]
+      have h0 : (2 * k) % 2 = 0 := Nat.mod_eq_zero_of_dvd (Nat.dvd_mul_right 2 k)
+      have h' : (2 * k + 1) % 2 = 1 := by
+        calc
+          (2 * k + 1) % 2 = ((2 * k) % 2 + 1 % 2) % 2 := by simp [Nat.add_mod]
+          _ = (0 + 1) % 2 := by simp [h0]
+          _ = 1 := by simp
+      simp [hlen]
+    refine ⟨?_, ?_⟩
+    · -- body membership for the full stream
+      simpa [Lift.liftNode, ← Stream'.append_eq_cons, ← Stream'.append_append_stream] using hGT
+    · -- payoff membership for the full stream
+      have hnot' := hnot hHgT hGT
+      have hx :
+          List.take (2 * k + 1) H.x.val ++ₛ Stream'.cons H.liftNode a ∈ Subtype.val '' G.payoff := by
+        have hsub :
+            Stream'.cons H.liftNode a ∈ body (subAt G.tree (List.take (2 * k + 1) H.x.val)) := by
+          simpa [Tree.subAt_body] using hGT
+        have :
+            (⟨Stream'.cons H.liftNode a, hsub⟩ : body (subAt G.tree (List.take (2 * k + 1) H.x.val)))
+              ∉ (G.residual (List.take (2 * k + 1) H.x.val)).payoff := by
+          simpa using hnot'
+        have :
+            (⟨Stream'.cons H.liftNode a, hsub⟩ : body (subAt G.tree (List.take (2 * k + 1) H.x.val)))
+              ∈ (body.append (List.take (2 * k + 1) H.x.val))⁻¹' G.payoff := by
+          simpa [Game.residual_payoff_odd _ _ hodd] using this
+        exact (mem_subAt_body (X := G.payoff) (x := List.take (2 * k + 1) H.x.val)
+          (y := (⟨Stream'.cons H.liftNode a, hsub⟩))).1 this
+      have hxEq' :
+          (List.take (2 * k + 1 + 1) H.x.val ++ₛ a) =
+            (List.take (2 * k + 1) H.x.val ++ₛ Stream'.cons H.liftNode a) := by
+        simp [Lift.liftNode, ← Stream'.append_eq_cons, ← Stream'.append_append_stream]
+      have hx' : List.take (2 * k + 1 + 1) H.x.val ++ₛ a ∈ Subtype.val '' G.payoff := by
+        simpa [hxEq'] using hx
+      rcases hx' with ⟨x', hx'P, hx'Eq⟩
+      have hx'body :
+          (⟨List.take (2 * k + 1 + 1) H.x.val ++ₛ a,
+              by simpa [hxEq'] using hGT⟩ : body G.tree) = x' := by
+        ext1
+        simpa using hx'Eq.symm
+      simpa [hx'body] using hx'P
 @[simps toWLLift] def toWLift' : WLLift' hyp where
   toWLLift := H.toWLift
   hlift := by
@@ -89,10 +137,23 @@ lemma extension_conLong hp R : (hW.toWLift'.extensionLift hp R).ConLong := by
     ∈ H.game.tree := by
     have hm' := by simpa using (mem_getTree (hW.toWLift'.extension hp R).valT').2
     rw [ExtensionsAt.val'_take_of_le _ (by simp)] at hm'; simp [toWLift] at hm'
-    simpa [liftNode, WLLift'.extensionMap, ExtensionsAt.map_val' π] using hm'.1
+    have hmin : min (2 * k + 2) (H.x.val.length + 1) = 2 * k + 2 := by
+      apply Nat.min_eq_left
+      have hxle : 2 * k + 2 ≤ H.x.val.length := H.h'lvl
+      exact hxle.trans (Nat.le_succ _)
+    simpa [hmin, liftNode, WLLift'.extensionMap, ExtensionsAt.map_val' π] using hm'.1
   simp [PreLift.ConLong]; convert hm using 1
-  rw [← List.getElem_cons_drop (by simp [Nat.lt_iff_add_one_le])]; congr 1
-  rw [List.getElem_take' (j := 2 * k + 2), H.x.val.getElem_take' (j := 2 * k + 2)] <;> simp
+  have hxlt' : 2 * k + 1 < H.x.val.length :=
+    Nat.lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) H.h'lvl
+  have hxlt : 2 * k + 1 < (hW.toWLift'.extensionMap hp R).val'.length := by
+    -- `extensionMap` extends `H.x` by one element.
+    simpa [WLLift'.extensionMap, ExtensionsAt.map_val', ExtensionsAt.val', ExtensionsAt.val'_length] using
+      Nat.lt_succ_of_lt hxlt'
+  -- Rewrite the dropped prefix of the extension into `head :: tail`.
+  rw [← List.getElem_cons_drop (as := (hW.toWLift'.extensionMap hp R).val') (i := 2 * k + 1) hxlt]
+  congr 1
+  -- The first `2*k+2` elements of the extension coincide with `H.x`.
+  simp [WLLift'.extensionMap, ExtensionsAt.val', hxlt']
 end Winnable
 
 variable (hyp) in
@@ -105,9 +166,34 @@ lemma losable (h : H.ConLong) : H.Losable := by
   apply AllWinning.existsWinning _ (H.game_pruned.sub _); have hL := H.lost'
   simp [Lost', WonPosition, AllWinning] at hL ⊢
   rw [Set.eq_empty_iff_forall_notMem] at *; rintro ⟨x, hx⟩ ⟨hx', hxp⟩
-  simp [Nat.add_mod] at hx hx' hxp; apply hL ⟨x, by
+  simp at hx hxp; apply hL ⟨x, by
     simpa [← Stream'.append_append_stream] using body_mono H.game_tree_sub hx⟩
-  simp; convert hxp.1 using 1; ext1; simp [← Stream'.append_append_stream, hxp.2]
+  -- Turn the residual non-payoff into a payoff statement, then transport along the stream equality.
+  have hodd : (List.take (2 * k + 1) H.x.val).length % 2 = 1 := by
+    have hlen : (List.take (2 * k + 1) H.x.val).length = 2 * k + 1 := by
+      simp [List.length_take, Nat.min_eq_left (le_trans (Nat.le_succ _) H.h'lvl)]
+    have h0 : (2 * k) % 2 = 0 := Nat.mod_eq_zero_of_dvd (Nat.dvd_mul_right 2 k)
+    have h' : (2 * k + 1) % 2 = 1 := by
+      calc
+        (2 * k + 1) % 2 = ((2 * k) % 2 + 1 % 2) % 2 := by simp [Nat.add_mod]
+        _ = (0 + 1) % 2 := by simp [h0]
+        _ = 1 := by simp
+    simp [hlen]
+  have hxmem : hx' ∈ (body.append (List.take (2 * k + 1) H.x.val))⁻¹' G.payoff := by
+    have : hx' ∈ (G.residual (List.take (2 * k + 1) H.x.val)).payoffᶜ := by
+      simpa using hxp.1
+    simpa [Game.residual_payoff_odd _ _ hodd] using this
+  have hximage : List.take (2 * k + 1) H.x.val ++ₛ hx'.val ∈ Subtype.val '' G.payoff :=
+    (mem_subAt_body (X := G.payoff) (x := List.take (2 * k + 1) H.x.val) (y := hx')).1 hxmem
+  have hximage' : H.x.val ++ₛ x ∈ Subtype.val '' G.payoff := by
+    -- use the stored equality to align prefixes
+    simpa [← Stream'.append_append_stream, List.take_append_drop, hxp.2] using hximage
+  have hxbody : x ∈ body (subAt G.tree H.x.val) := by
+    -- `hximage'` witnesses a payoff stream, hence a body stream
+    rcases hximage' with ⟨y, hyP, hyEq⟩
+    have : H.x.val ++ₛ x ∈ body G.tree := by simpa [hyEq] using y.prop
+    simpa [subAt_body] using this
+  exact (mem_subAt_body (X := G.payoff) (x := H.x.val) (y := ⟨x, hxbody⟩)).2 hximage'
 lemma exists_prefix : ∃ n h, (H.take n h).Lost' :=
   ⟨H.x.val.length, H.h'lvl, by simpa using H.lost'⟩
 def minLength := Nat.find H.exists_prefix
@@ -182,9 +268,15 @@ lemma liftMedium_mem : hL.1.mk.toWLLift.liftMediumVal ∈ T' := by
   · simp_rw (config := {singlePass := true}) [← add_zero (2 * k + 1),
       List.getElem_drop', List.getElem_zero]
     simpa using mem_of_prefix ⟨(hL.1.mk.takeMin.x.val.drop (2 * k + 1)).tail, by
-      simp
-      rw [← List.getElem_take, List.getElem_cons_drop]
-      simp [Nat.lt_iff_add_one_le]⟩ hL.2
+      have hlenH : 2 * k + 1 < H.x.val.length := by
+        exact lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) H.h'lvl
+      have hlenMin : 2 * k + 1 < hL.1.mk.minLength := by
+        exact lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) hL.1.mk.le_minLength
+      have htake : 2 * k + 1 < (List.take hL.1.mk.minLength H.x.val).length := by
+        simpa [List.length_take, Nat.lt_min] using And.intro hlenMin hlenH
+      simpa [List.tail_drop] using
+        (List.drop_eq_getElem_cons (l := List.take hL.1.mk.minLength H.x.val)
+          (i := 2 * k + 1) htake).symm⟩ hL.2
   · simp; left; rw [LosingCondition.concat]
     refine ⟨?_, ⟨hL.1.mk.takeMin.x.val.drop (2 * k + 2), ?_⟩, ?_⟩
     · simp [LLift.toWLLift]; rw [← Set.subset_empty_iff]
@@ -193,19 +285,44 @@ lemma liftMedium_mem : hL.1.mk.toWLLift.liftMediumVal ∈ T' := by
       use ⟨z, by simpa⟩; ext1
       simp [← Stream'.append_append_stream] at hze
       rw [List.drop_take, ← List.take_add] at hze
-      simpa using hze
-    · rw [LLift.takeMin_x_coe]; simp; rw [List.getElem_take', List.getElem_cons_drop]
-      · simpa [PreLift.ConLong] using hL.2
-      · simp [Nat.lt_iff_add_one_le]
+      have hlen : 2 * k + 2 + (hL.1.mk.minLength - (2 * k + 2)) = hL.1.mk.minLength := by
+        exact Nat.add_sub_of_le hL.1.mk.le_minLength
+      -- rewrite `2*k+1+1` into `2*k+2` and close with `hlen`
+      have hidx :
+          1 + (1 + (2 * k + (hL.1.mk.minLength - (2 + 2 * k)))) =
+            2 * k + 2 + (hL.1.mk.minLength - (2 * k + 2)) := by
+        omega
+      simpa [hidx, hlen] using hze
+    · rw [LLift.takeMin_x_coe]; simp
+      have hlenH : 2 * k + 1 < H.x.val.length := by
+        exact lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) H.h'lvl
+      have hlenMin : 2 * k + 1 < hL.1.mk.minLength := by
+        exact lt_of_lt_of_le (Nat.lt_succ_self (2 * k + 1)) hL.1.mk.le_minLength
+      have htake : 2 * k + 1 < (List.take hL.1.mk.minLength H.x.val).length := by
+        simpa [List.length_take, Nat.lt_min] using And.intro hlenMin hlenH
+      rw [List.getElem_take' (xs := H.x.val) (i := 2 * k + 1) (j := hL.1.mk.minLength)
+        (hi := hlenH) (hj := hlenMin)]
+      rw [← List.drop_eq_getElem_cons (l := List.take hL.1.mk.minLength H.x.val)
+        (i := 2 * k + 1) htake]
+      simpa [PreLift.ConLong] using hL.2
     · simp [LLift.toWLLift]
       rw [List.append_cons, List.take_concat_get', List.drop_take, ← List.take_add]
-      simp
+      have hidx :
+          2 * k + 1 + 1 + (hL.1.mk.minLength - (2 * k + 2)) = hL.1.mk.minLength := by
+        have hlen : 2 * k + 2 + (hL.1.mk.minLength - (2 * k + 2)) = hL.1.mk.minLength := by
+          exact Nat.add_sub_of_le hL.1.mk.le_minLength
+        calc
+          2 * k + 1 + 1 + (hL.1.mk.minLength - (2 * k + 2)) =
+              2 * k + 2 + (hL.1.mk.minLength - (2 * k + 2)) := by
+                omega
+          _ = hL.1.mk.minLength := hlen
+      simp [hidx]
 lemma lift_mem n : hL.1.mk.toWLLift.liftMediumVal ++
   ((H.x.val.drop (2 * k + 2)).take n).zipInitsMap
   (fun a y ↦ ⟨a, subAt hL.1.mk.toWLLift.liftTree y⟩) ∈ T' := by
   induction' n with n ih
   · simpa using hL.liftMedium_mem
-  · simp only [List.take_succ, List.zipInitsMap_append, List.getElem?_drop] at ih ⊢
+  · simp only [List.take_add_one, List.zipInitsMap_append, List.getElem?_drop] at ih ⊢
     by_cases hn : 2 * k + 2 + n ≥ H.x.val.length
     · erw [List.getElem?_eq_none_iff.mpr hn]
       simpa only [Option.toList_none, List.zipInitsMap_nil, List.append_nil] using ih
@@ -213,13 +330,102 @@ lemma lift_mem n : hL.1.mk.toWLLift.liftMediumVal ++
       use ih; rw [getTree_eq' _ ih]
       refine ⟨?_, by simp [← List.zipInitsMap_map]⟩
       rw [List.take_left' (WLLift.liftMediumVal_length _)]
-      simp only [LLift.toWLLift, LLift.takeMin_x_coe,
+      simp only [LLift.toWLLift,
         WLLift.getTree_liftMediumVal, WLLift.liftMediumVal_length, List.drop_left', mem_subAt]
       by_cases hn : 2 * k + 2 + n + 1 ≤ hL.1.mk.minLength
-      · rw [mem_pullSub_short (by as_aux_lemma => simp; omega)]; constructor
-        · simp [← List.zipInitsMap_map]; rw [List.getElem_drop', List.take_concat_get']
-          simp [List.drop_take]; omega
-        · simpa only [mem_subAt, List.append_nil, LLift.takeMin_x_coe] using hL.1.mk.takeMin.x.prop
+      ·
+        have hn' : n + 1 ≤ hL.1.mk.minLength - (2 * k + 2) := by
+          omega
+        have hmin_le : hL.1.mk.minLength ≤ H.x.val.length := hL.1.mk.minLength_le
+        have hlen_map :
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y)))).length ≤ n := by
+          calc
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y)))).length
+                = (List.take n (List.drop (2 * k + 2) H.x.val)).length := by
+                  simp [List.zipInitsMap_length]
+            _ = min n (H.x.val.drop (2 * k + 2)).length := by simp [List.length_take]
+            _ ≤ n := Nat.min_le_left _ _
+        have hylen :
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y))) ++
+              [H.x.val[2 * k + 2 + n]]).length ≤ n + 1 := by
+          calc
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y))) ++
+              [H.x.val[2 * k + 2 + n]]).length
+                =
+                (List.map Prod.fst
+                  ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                    (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y)))).length + 1 := by
+                  simp
+            _ ≤ n + 1 := by
+              exact Nat.add_le_add_right hlen_map _
+        have hshort' :
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y))) ++
+              [H.x.val[2 * k + 2 + n]]).length ≤ hL.1.mk.minLength - (2 * k + 2) :=
+          le_trans hylen hn'
+        have hshort :
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦ (a, subAt hL.1.mk.toWLLift.liftTree y))) ++
+              [H.x.val[2 * k + 2 + n]]).length
+              ≤ (hL.1.mk.takeMin.x.val.drop (2 * k + 2)).length := by
+          have hdrop_len :
+              (hL.1.mk.takeMin.x.val.drop (2 * k + 2)).length =
+                hL.1.mk.minLength - (2 * k + 2) := by
+            simp [LLift.takeMin_x_coe, List.length_drop, List.length_take, Nat.min_eq_left hmin_le]
+          rw [hdrop_len]
+          exact hshort'
+        have hshort'' :
+            (List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦
+                    (a,
+                      subAt
+                        (pullSub (subAt G.tree hL.1.mk.takeMin.x.val)
+                          (hL.1.mk.takeMin.x.val.drop (2 * k + 2)))
+                        y))) ++
+              [H.x.val[2 * k + 2 + n]]).length
+              ≤ (hL.1.mk.takeMin.x.val.drop (2 * k + 2)).length := by
+          simpa [LLift.toWLLift] using hshort
+        have hy :
+            List.map Prod.fst
+                ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+                  (fun a y ↦
+                    (a,
+                      subAt
+                        (pullSub (subAt G.tree hL.1.mk.takeMin.x.val)
+                          (hL.1.mk.takeMin.x.val.drop (2 * k + 2)))
+                        y))) ++
+              [H.x.val[2 * k + 2 + n]] <+:
+              hL.1.mk.takeMin.x.val.drop (2 * k + 2) ∧
+            [] ∈ subAt G.tree hL.1.mk.takeMin.x.val := by
+          constructor
+          · simp [← List.zipInitsMap_map]; rw [List.getElem_drop', List.take_concat_get']
+            simp [List.drop_take]
+            have hmin := hL.1.mk.le_minLength
+            omega
+          · simpa only [mem_subAt, List.append_nil, LLift.takeMin_x_coe] using hL.1.mk.takeMin.x.prop
+        exact (@mem_pullSub_short _
+          (subAt G.tree hL.1.mk.takeMin.x.val)
+          (hL.1.mk.takeMin.x.val.drop (2 * k + 2))
+          (List.map Prod.fst
+            ((List.take n (List.drop (2 * k + 2) H.x.val)).zipInitsMap
+              (fun a y ↦
+                (a,
+                  subAt
+                    (pullSub (subAt G.tree hL.1.mk.takeMin.x.val)
+                      (hL.1.mk.takeMin.x.val.drop (2 * k + 2)))
+                    y))) ++
+            [H.x.val[2 * k + 2 + n]]) hshort'').2 hy
       · rw [mem_pullSub_long (by as_aux_lemma => simp; omega)]
         use ((H.x.val.drop (2 * k + 2)).drop (hL.1.mk.minLength - (2 * k + 2))).take
           (2 * k + n + 3 - hL.1.mk.minLength), by
@@ -269,7 +475,10 @@ lemma extensionPreLift_take :
   rw [← h.extensionPreLift_take hp]; simp
 @[simps! toPreLift] def extensionLift : Lift hyp where
   toPreLift := h.extensionPreLift hp
-  h'lvl := by simp
+  h'lvl := by
+    have hlen : H.x.val.length ≤ (h.extensionPreLift hp).x.val.length := by
+      simp [extensionPreLift, extension, ExtensionsAt.val'_length]
+    exact le_trans H.h'lvl hlen
   conShort := by rw [← PreLift.conShort_iff_take, extensionPreLift_take]; exact H.conShort; exact H.hlvl
 lemma extensionLift_take :
   (h.extensionLift hp).take H.x.val.length H.h'lvl = H := by
@@ -278,7 +487,9 @@ lemma extension_losable hp : (h.extensionLift hp).Losable := by
   apply extend; rw [extensionLift_take]; exact h
   unfold PreLift.ConLong
   simp [extension, ExtensionsAt.val']
-  rw [List.drop_append_of_le_length (by simp)]
+  rw [List.drop_append_of_le_length (by
+    have hlen := H.h'lvl
+    omega)]
   simpa [← List.append_assoc] using (h.a hp).prop
 end
 end Losable
