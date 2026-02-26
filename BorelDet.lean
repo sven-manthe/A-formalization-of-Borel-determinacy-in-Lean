@@ -1,3 +1,3 @@
 import BorelDet.Proof.borel_determinacy
 import BorelDet.Game.undetermined
-import BorelDet.Applications.BanachMazur
+import BorelDet.Applications.Choquet

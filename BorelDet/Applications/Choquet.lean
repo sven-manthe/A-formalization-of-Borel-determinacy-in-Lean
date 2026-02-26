@@ -4,6 +4,8 @@ import BorelDet.Proof.borel_determinacy
 open GaleStewartGame
 open Descriptive
 
+namespace Choquet
+
 variable {X : Type*} (V : Set (Set X)) (PO : Set (Set X))
 def chainTree : tree V where
     val := {x | x.IsChain (· ≥ ·)}
@@ -18,7 +20,6 @@ lemma concat_mem_chainTree {x A} :
 def chainTree.concat (x : chainTree V) (A : V) (h : ∀ hx, A ≤ x.val.getLast hx) : chainTree V where
     val := x.val ++ [A]
     property := by rw [concat_mem_chainTree]; use x.prop
---TODO win conjunctions by combining strategies
 def interGame : Game V where
     tree := chainTree V
     payoff A := PO (⋂ n, A.1 n)
@@ -46,31 +47,8 @@ def shrink' {x : chainTree W} (a : Tree.ExtensionsAt (extend hWV x)) :
         simpa using ha.2 (by simpa))).prop⟩
 attribute [simp_lengths] extend_coe
 
-section restrict
-variable {p : Player} (S : Strategy (chainTree V) p)
---TODO cases fails in synth_isPosition if target depends?
-def restrict : Strategy (chainTree W) p := fun x hp ↦
-    shrink' hWV hW (S (extend hWV x) (by synth_isPosition))
---TODO eigene Züge wie mit alter Strategie, choose vor Zügen des Gegners
-def restrict_tree (x : S.pre.subtree) : (restrict hWV hW S).pre.subtree :=
-    List.reverseRecOn x.val ⟨[], by simp [nil_mem_chainTree]⟩ fun xs A ys ↦ --TODO need to distingush parity
-        ⟨chainTree.concat W (PreStrategy.subtree_incl _ ys) (choose_pair hW A) (by
-        simp
-        have : xs ++ [A] ∈ S.pre.subtree := by sorry --TODO need tree reverseRecOn here´
-        have h := this.1
-        rw [concat_mem_chainTree] at h
-        intro _; apply (choose_pair_sub hW A).trans
-        --TODO need ys restrict to xs here
-        sorry), sorry⟩
-lemma restrict_winning (h : S.pre.IsWinning (G := interGame V PO)) :
-    (restrict hWV hW S).pre.IsWinning (G := interGame W PO) := by
-    sorry --TODO restrict body sub
-end restrict
-
-namespace Choquet
 variable (X)
 variable [TopologicalSpace X]
 def game := interGame (X := X) {A | IsOpen A ∧ A.Nonempty} {∅}
 def IsChoquet := (game X).ExistsWinning Player.one
 end Choquet
---TODO: here Banach-Mazur games could be added
