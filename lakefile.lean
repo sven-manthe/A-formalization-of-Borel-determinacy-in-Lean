@@ -11,7 +11,7 @@ package «borel_det» where
   -- add any package configuration options here
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+  "https://github.com/leanprover-community/mathlib4.git" @ "b94b918"
 
 @[default_target]
 lean_lib «BorelDet» {

@@ -94,7 +94,7 @@ def extensionsEquiv' (hy : Fixing (y.val.length + 1) f := by as_aux_lemma => syn
   ((extensionsEquiv' f y hy).symm a).valT' = f a.valT' := by
   ext
   simp_rw [ExtensionsAt.valT'_coe, ExtensionsAt.eq_obj, extensionsEquiv', Equiv.symm_trans_apply,
-    Equiv.cast_symm, Equiv.symm_symm, Equiv.cast_apply, Iso.toEquiv_symm_fun, Functor.mapIso_inv,
+    ← Equiv.cast_symm, Equiv.symm_symm, Equiv.cast_apply, Iso.toEquiv_symm_fun, Functor.mapIso_inv,
     extensionsRes_symm_val', extensions_map_val']
   simp only [h_length_pInv, cast_val', extensionsRes_val']; rfl
 @[simp] lemma extensionsEquiv'_val' (a : ExtensionsAt y) (hy : Fixing (y.val.length + 1) f) :

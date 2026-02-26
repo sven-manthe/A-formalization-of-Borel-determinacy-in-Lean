@@ -20,24 +20,24 @@ def stratMap' (R : Strategy T' Player.zero) : Strategy G.tree Player.zero :=
   fun x hp ↦ stratMap x.val.length ((strategyEquivSystem R).str _) x hp le_rfl
 lemma stratMap'_short R x hp (hx : x.val.length ≤ 2 * k) :
   stratMap' R x hp = (ResStrategy.fromMap π) ((strategyEquivSystem («T» := ⟨_, T'⟩) R).str _)
-    x hp le_rfl := by
-  dsimp [stratMap', stratMap]; simp [hx] --TODO simp instead of dsimp leads to max recursion depth?
+    x hp le_rfl := by simp [stratMap', stratMap, hx]
 
 variable (hyp) in
 @[ext 900] structure TreeLift where
   R : Strategy T' Player.zero
   x : (stratMap' R).pre.subtree
-  hlvl : 2 * k + 1 ≤ x.val.length (α := no_index _)
+  hlvl : 2 * k < x.val.length (α := no_index _)
 namespace TreeLift
 @[ext] lemma ext' {H H' : TreeLift hyp} (hR : H.R = H'.R) (hx : H.x.val = H'.x.val) : H = H' := by
   ext <;> [skip; rw [Subtype.heq_iff_coe_heq]] <;> simp [*]
 variable (H : TreeLift hyp)
 attribute [simp] hlvl
+@[simp] lemma hlvl_le : 2 * k + 1 ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 @[simp] lemma hlvl' : 2 * k ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 @[simps!] def preLift : PreLift hyp := ⟨subtree_incl _ H.x,
   H.hlvl, (strategyEquivSystem H.R).str (2 * k)⟩
 attribute [simp_lengths] preLift_x_coe
-@[simps] def take (n : ℕ) (hk : 2 * k + 1 ≤ n) : TreeLift hyp where
+@[simps] def take (n : ℕ) (hk : 2 * k < n) : TreeLift hyp where
   R := H.R
   x := Tree.take n H.x
   hlvl := by simp [hk]
@@ -89,7 +89,7 @@ lemma x_mem_tree' h (hp : IsPosition H.x.val Player.one) :
   ext1; simp [ExtensionsAt.val']; rw [← H.x_mem_tree h hp, ← List.eq_take_concat]; omega
 
 lemma conLong_or_lost : H.preLift.ConLong ∨ ∃ h, (H.lift h).Lost := by
-  let ⟨n, hn⟩ := le_iff_exists_add.mp H.hlvl
+  let ⟨n, hn⟩ := le_iff_exists_add.mp H.hlvl_le
   induction' n with n ih generalizing H
   · left
     rw [PreLift.ConLong, ← hn, List.drop_of_length_le (by simp)]
@@ -154,7 +154,7 @@ lemma x_mem_tree_short' h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) P
     · simp [ResStrategy.fromMap]; rfl
     · synth_isPosition
   · ext1
-    simp [← List.take_append_getElem, ExtensionsAt.val']; congr <;> simp [PreLift.liftShort];
+    simp [← List.take_append_getElem, ExtensionsAt.val']; constructor <;> simp [PreLift.liftShort]
     · rw [ExtensionsAt.val'_take_of_eq] <;> simp
     · rw [ExtensionsAt.val'_get_last_of_eq _ (by simp)]; rfl
 lemma x_mem_tree_short h' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Player.zero) :

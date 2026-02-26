@@ -202,22 +202,22 @@ lemma u_eq_le {H H' : WLift hyp} (h : H.toPreLift ≤ H'.toPreLift) : HEq H.u H'
 lemma uprop' : (WLift.mk _ H.min_prefix).u.val ∈ H.takeMin.WonPos := by simp
 lemma uprop'_choose : HEq H.u.prop.choose H.uprop'.choose := by
   congr 1
-  · simp [List.take_take]
+  · simp [List.take_take, WLift.le_minLength H]
   · congr! 1 with S1 S2 heq
-    · simp [List.take_take]
-    · rw [← cast_eq_iff_heq (e := by simp [List.take_take])] at heq
+    · simp [List.take_take, H.le_minLength]
+    · rw [← cast_eq_iff_heq (e := by simp [List.take_take, H.le_minLength])] at heq
       have : (H.extend S1).liftShort = (H.takeMin.extend S2).liftShort := by
         simp [takeMin, extend, Lift.liftShort, Lift.liftVeryShort]; congr! 5
         · apply Subtype.ext; simp
         · simp
-        · rw [← heq]; symm; apply cast_subtree; simp [List.take_take]; rfl
+        · rw [← heq]; symm; apply cast_subtree; simp [List.take_take, H.le_minLength]; rfl
       simp only [Lift.PreWonPos, ne_eq, extend_toPreLift, u_min_prefix, takeMin_x_coe]; congr! 6
       · congr!
-      · simp [List.take_take]
+      · simp [List.take_take, H.le_minLength]
   · apply proof_irrel_heq
 lemma toLift_liftTree' : H.toLift.liftTree = H.uprop'.choose.1.subtree := by
-  simp only [toLift_liftTree, S]; congr! 1; simp [List.take_take]
-  apply hEq_fst; simp [List.take_take]; congr!; exact H.uprop'_choose
+  simp only [toLift_liftTree, S]; congr! 1; simp [List.take_take, H.le_minLength]
+  apply hEq_fst; simp [List.take_take, H.le_minLength]; congr!; exact H.uprop'_choose
 lemma toLift_mono {H H' : WLift hyp} (h : H.toPreLift ≤ H'.toPreLift) :
   H.toLift.liftTree = H'.toLift.liftTree := by
   simp_rw [toLift_liftTree']; have hu := u_eq_le h; rw [Subtype.heq_iff_coe_eq] at hu

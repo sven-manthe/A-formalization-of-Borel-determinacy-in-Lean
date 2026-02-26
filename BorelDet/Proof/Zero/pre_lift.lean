@@ -12,11 +12,12 @@ noncomputable section
 variable (hyp) in
 @[ext] structure PreLift where
   x : T
-  hlvl : 2 * k + 1 ≤ x.val.length (α := no_index _)
+  hlvl : 2 * k < x.val.length (α := no_index _)
   R : ResStrategy ⟨_, T'⟩ Player.zero (2 * k)
 variable (H : PreLift hyp)
 namespace PreLift
 attribute [simp] hlvl
+@[simp] lemma hlvl_le : 2 * k + 1 ≤ H.x.val.length (α := no_index _) := by simp
 @[simp] lemma hlvl' : 2 * k ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 def liftShort : T' := (H.R (pInv π (Tree.take (2 * k) H.x))
   (by have := H.hlvl; synth_isPosition) (by simp)).valT'
@@ -37,10 +38,10 @@ lemma game_pruned : IsPruned H.game.tree := (getTree_ne_and_pruned _).2
 lemma game_closed : IsClosed H.game.payoff := by
   apply IsClosed.preimage continuous_subtype_val
   rw [← (Topology.IsClosedEmbedding.subtypeVal (body_isClosed _)).isClosed_iff_image_isClosed,
-    G.residual_payoff_odd _ (by simp [Nat.add_mod]), compl_compl]
+    G.residual_payoff_odd _ (by have := H.hlvl; synth_isPosition), compl_compl]
   exact hyp.closed.preimage <| body.append_con _
 
-@[simps] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : PreLift hyp where
+@[simps] def take (n : ℕ) (h : 2 * k < n) : PreLift hyp where
   x := Tree.take n H.x
   hlvl := by simp [h]
   R := H.R
@@ -81,7 +82,7 @@ lemma conLong_take {h} (h' : H.ConLong) : (H.take n h).ConLong := by
 end PreLift
 variable (hyp) in
 @[ext (flat := false)] structure Lift extends PreLift hyp where
-  h'lvl : 2 * k + 2 ≤ toPreLift.x.val.length (α := no_index _)
+  h'lvl : 2 * k + 1 < toPreLift.x.val.length (α := no_index _)
   conShort : toPreLift.ConShort
 instance : PartialOrder (Lift hyp) where
   le p q := p.toPreLift ≤ q.toPreLift
@@ -97,6 +98,7 @@ lemma Winnable.conLong (h : H.Winnable) : H.ConLong := byContradiction fun h' �
   h (winningPrefix_of_notMem H.game Player.one h')
 
 attribute [simp] h'lvl
+@[simp] lemma h'lvl_le : 2 * k + 2 ≤ H.x.val.length (α := no_index _) := by have := H.h'lvl; omega
 @[simp] lemma liftShort_val_map :
   H.liftShort.val.map (α := no_index _) Prod.fst = H.x.val.take (2 * k + 1) := by
   rw [H.liftShort.val.eq_take_concat (2 * k) (by simp)]
@@ -195,8 +197,9 @@ def extensionMap := ExtensionsAt.map π H.lift_lift (H.extension hp R)
   x := (H.extensionMap hp R).valT'
   R := H.R
   hlvl := by simp
+attribute [simp_lengths] extensionPreLift_x
 @[simp] lemma extensionPreLift_take :
-  (H.extensionPreLift hp R).take (H.x.val.length (α := no_index _)) (by simp) = H.toPreLift := by
+  (H.extensionPreLift hp R).take (H.x.val.length (α := no_index _)) (by have := H.hlvl; synth_isPosition) = H.toPreLift := by
   ext1 <;> simp [extensionPreLift, extensionMap]
 @[simp] lemma extensionPreLift_liftShort : (H.extensionPreLift hp R).liftShort = H.liftShort := by
   rw [← extensionPreLift_take, PreLift.liftShort_take]

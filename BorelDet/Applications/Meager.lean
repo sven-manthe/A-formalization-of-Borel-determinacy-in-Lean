@@ -21,9 +21,6 @@ def openDenseFilterBasis : FilterBasis X where
     ⟨hU.1.inter hV.1, hU.2.inter_of_isOpen_left hV.2 hU.1⟩, subset_rfl⟩
 abbrev openDenseFilter : Filter X := openDenseFilterBasis.filter
 
-lemma IsNowhereDense.mono (h : IsNowhereDense B) (hA : A ⊆ B) : IsNowhereDense A := by
-  rw [IsNowhereDense, ← Set.subset_empty_iff]
-  exact subset_trans (interior_mono (closure_mono hA)) h.subset
 lemma IsNowhereDense.inter_left (hA : IsNowhereDense A) :
   IsNowhereDense (A ∩ B) := hA.mono Set.inter_subset_left
 lemma IsNowhereDense.inter_right (hA : IsNowhereDense A) :
@@ -166,9 +163,6 @@ lemma residual_le_openDense : residual X ≤ openDenseFilter := by
   unfold openDenseFilter
   rw [openDenseFilterBasis.hasBasis.ge_iff]
   exact fun _ h ↦ residual_of_dense_open h.1 h.2
-lemma IsNowhereDense.isMeagre (h : IsNowhereDense A) : IsMeagre A := by
-  rw [isNowhereDense_iff_compl_contains_openDense] at h
-  exact residual_le_openDense h
 lemma isMeagre_iff_eq_countable_union_isNowhereDense {s : Set X} :
     IsMeagre s ↔ ∃ S : Set (Set X), (∀ t ∈ S, IsNowhereDense t) ∧ S.Countable ∧ s = ⋃₀ S := by
   rw [isMeagre_iff_countable_union_isNowhereDense]; constructor
@@ -280,7 +274,7 @@ private lemma forces_disjoint_iUnion_left {I} (U : I → tX.Opens)
       intro x ⟨h, hxU⟩
       obtain ⟨j, hj⟩ := by simpa using h
       specialize hd (i := i) (j := j)
-      simp [Function.onFun] at hd
+      simp [Function.onFun, - TopologicalSpace.Opens.coe_disjoint] at hd
       by_cases i = j <;> tauto_set)
 end residual.dom
 open residual.dom in

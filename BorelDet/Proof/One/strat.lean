@@ -25,7 +25,7 @@ variable (hyp) in
 @[ext 900] structure TreeLift where
   R : Strategy T' Player.one
   x : (stratMap' R).pre.subtree
-  hlvlR : 2 * k + 1 ≤ x.val.length (α := no_index _)
+  hlvl : 2 * k < x.val.length (α := no_index _)
 namespace TreeLift
 variable (H : TreeLift hyp)
 @[ext] lemma ext' {H H' : TreeLift hyp} (hR : H.R = H'.R) (hx : H.x.val = H'.x.val) : H = H' := by
@@ -33,15 +33,16 @@ variable (H : TreeLift hyp)
   · simp [hR]
   · rw [Subtype.heq_iff_coe_heq rfl (by simp [hR])]
     simpa
-@[simp] lemma hlvl : 2 * k + 1 ≤ H.x.val.length (α := no_index _) := H.hlvlR
+attribute [simp] TreeLift.hlvl
+@[simp] lemma hlvl_le : 2 * k + 1 ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 @[simp] lemma hlvl' : 2 * k ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 @[simps!] def preLift : PreLift hyp := ⟨subtree_incl _ H.x,
   H.hlvl, (strategyEquivSystem H.R).str (2 * k + 1)⟩
 attribute [simp_lengths] preLift_x_coe
-@[simps] def take (n : ℕ) (hk : 2 * k + 1 ≤ n) : TreeLift hyp where
+@[simps] def take (n : ℕ) (hk : 2 * k < n) : TreeLift hyp where
   R := H.R
   x := Tree.take n H.x
-  hlvlR := by simp [hk]
+  hlvl := by simp [hk]
 attribute [simp_lengths] take_x
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by ext1 <;> simp [h']
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
@@ -75,7 +76,7 @@ lemma x_mem_tree' h (hp : IsPosition H.x.val Player.zero) :
 
 lemma losable_or_winnable :
   H.preLift.Losable ∨ H.preLift.Winnable := by
-  let ⟨n, hn⟩ := le_iff_exists_add.mp H.hlvl
+  let ⟨n, hn⟩ := le_iff_exists_add.mp H.hlvl_le
   induction' n with n ih generalizing H
   · suffices H.preLift.Losable ∨ H.preLift.Winnable ∨ H.preLift.Won by --TODO how can this be more powerful than the plain have for subsequent tauto?
       have (h : H.preLift.Won) : H.preLift.Winnable := (PreLift.WLift.mk _ h).winnable; tauto
@@ -155,7 +156,7 @@ lemma x_mem_tree_short' (h : n ≤ 2 * k) (hp : IsPosition (H.x.val.take n) Play
   · simp [ResStrategy.fromMap]; rfl
   · synth_isPosition
 lemma x_mem_tree_short (h : n < 2 * k) (hp : IsPosition (H.x.val.take n) Player.one) :
-  (pInvTreeHom_map hyp (H.x.val.take (2 * k)))[n]'(by simpa [Nat.lt_iff_add_one_le]) =
+  (pInvTreeHom_map hyp (H.x.val.take (2 * k)))[n]'(by simpa) =
   (H.R (pInv π ((stratMap' H.R).pre.subtree_incl (Tree.take n H.x))) (by simpa)).val := by
   have h := congr_arg (fun x ↦ x.val[n]?) (H.x_mem_tree_short' h.le hp)
   simp at h; apply Option.some_injective
@@ -306,7 +307,7 @@ variable {R : Strategy (gameAsTrees hyp).2 Player.one} (y : body (stratMap' R).p
 @[simps] def bodyTake (n : ℕ) : TreeLift hyp where
   R := R
   x := body.take (2 * k + 1 + n) y
-  hlvlR := by simp
+  hlvl := by synth_isPosition
 @[simp] lemma bodyTake_take (h : 2 * k + 1 ≤ m) :
   (bodyTake y n).take m (by omega) = bodyTake y (min (m - (2 * k + 1)) n) := by
   ext1 <;> simp; congr; omega
@@ -328,10 +329,10 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
   have hb : (body.drop (2 * k + 1 + h.num) y).val ∈ body h.strat.pre.subtree := by
     apply mem_body_of_take (n + 1); intro m hm
     have := (bodyTake y (h.num + m)).winnable_subtree
-      (h.winnable_of_le (by simp [- PreLift.le_def]; omega))
-      (by
-        simp [TreeLift.dropLast, - TreeLift.preLift_take] at h' ⊢; intro _
-        apply h')
+      (h.winnable_of_le (by simp [- PreLift.le_def]; omega)) (by
+      simp [TreeLift.dropLast, - TreeLift.preLift_take] at h' ⊢
+      intro _; rw [bodyTake_take _ (by synth_isPosition)]
+      apply h')
     simp [Stream'.take_drop] at this ⊢; generalize_proofs pf1 pf2 pf3 at this
     rw [h.prefix_strat_subtree (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _)
       (by simp) rfl] at this
@@ -339,11 +340,6 @@ lemma won_of_winnable n (h : (bodyTake y n).preLift.Winnable) :
     exact (WinningPrefix.prefix_num _
       (((Stream'.take_prefix _ _ _).mpr (by as_aux_lemma => synth_isPosition)).drop _) (by simp) rfl).symm
   have hw := h.strat_winning hb
-  simp only [takeLift_game, TreeLift.preLift_x_coe, bodyTake_R, bodyTake_x, body.take_coe,
-    residual_tree, Player.payoff_residual, Player.residual_residual, List.length_append,
-    List.length_take, List.length_drop, Stream'.length_take, add_tsub_cancel_left, div_add_self,
-    Player.residual_even, Player.payoff_zero, subAt_body_image, body.drop_coe, Set.mem_preimage,
-    Set.mem_image, Subtype.exists, exists_and_right, exists_eq_right] at hw
   simp [PreLift.game_tree, PreLift.game_payoff] at hw
   obtain ⟨u, hu1, hu2⟩ := hw.2
   use u.length; simp [PreLift.Won]; use u, hu1

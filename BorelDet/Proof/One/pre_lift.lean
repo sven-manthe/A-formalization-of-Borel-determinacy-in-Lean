@@ -12,16 +12,17 @@ noncomputable section
 variable (hyp) in
 @[ext] structure PreLift where
   x : T
-  hlvl : 2 * k + 1 ≤ x.val.length (α := no_index _)
+  hlvl : 2 * k < x.val.length (α := no_index _)
   R : ResStrategy ⟨_, T'⟩ Player.one (2 * k + 1)
 namespace PreLift
 variable (H : PreLift hyp)
 attribute [simp] hlvl
+@[simp] lemma hlvl_le : 2 * k + 1 ≤ H.x.val.length (α := no_index _) := by simp
 @[simp] lemma hlvl' : 2 * k ≤ H.x.val.length (α := no_index _) := by linarith [H.hlvl]
 lemma gameTree_eq : subAt (getTree (pInv π (Tree.take (2 * k) H.x)).val) [H.x.val[2 * k]'H.hlvl] =
   subAt T (H.x.val.take (2 * k + 1)) := by simp
 
-@[simps] def take (n : ℕ) (h : 2 * k + 1 ≤ n) : PreLift hyp where
+@[simps] def take (n : ℕ) (h : 2 * k < n) : PreLift hyp where
   x := Tree.take n H.x
   hlvl := by simp [h]
   R := H.R
@@ -187,7 +188,7 @@ lemma conLong : H.x.val.drop (2 * k + 2) ∈ getTree H.liftShort.val := by
   con := H.con.take _ _
 attribute [simp_lengths] take_toLift
 lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
-  ext1; apply Lift.take_of_length_le; omega
+  ext1; apply Lift.take_of_length_le <;> omega
 @[simp] lemma take_rfl : H.take (H.x.val.length (α := no_index _)) H.hlvl = H :=
   H.take_of_length_le le_rfl
 @[simp] lemma take_trans hm hn : (H.take m hm).take n hn = H.take (min m n) (by simp [*]) := by
@@ -196,7 +197,7 @@ lemma take_of_length_le {h} (h' : H.x.val.length ≤ n) : H.take n h = H := by
 @[simps] def lift : T' where
   val := H.liftVal
   property := by
-    let ⟨n, hn⟩ := le_iff_exists_add.mp H.hlvl
+    let ⟨n, hn⟩ := le_iff_exists_add.mp (Nat.add_one_le_iff.mpr H.hlvl)
     induction' n with n ih generalizing H
     · simp [Lift.liftVal, hn]
     · specialize ih (H.take (2 * k + 1 + n) (by omega)); simp [hn] at ih

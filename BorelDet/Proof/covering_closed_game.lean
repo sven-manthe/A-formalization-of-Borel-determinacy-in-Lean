@@ -192,7 +192,7 @@ def pInvTreeHom : (Tree.res (2 * k)).obj ⟨_, T⟩ ⟶ (Tree.res (2 * k)).obj �
     · simpa using ⟨gameTree_ne, by simp⟩
     · specialize ih (mem_of_append h)
       simp [res] at ih ⊢
-      have : x.length + 1 ≤ 2 * k := by
+      have : x.length < 2 * k := by
         simpa only [List.length_append, List.length_singleton] using h.2
       use ⟨ih.1, by simpa (disch := simp only [pInvTreeHom_map_len]; omega) using h.1⟩⟩
   monotone' x y h := h.zipInitsMap _ _ _
@@ -240,7 +240,7 @@ lemma gameTree_isPruned : IsPruned <| gameTree hyp := by
     · left; have ⟨y, hy⟩ := h
       rw [← (Game.isClosed_image_payoff.mp hyp.closed).closure_eq,
         mem_closure_iff_nhds_basis (hasBasis_principalOpen' (2 * k + 1 + 1) _)] at hy
-      simp at hy; obtain ⟨_, hn, hy⟩ := hy; obtain ⟨n, rfl⟩ := le_iff_exists_add.mp hn
+      simp at hy; obtain ⟨n, hn, hy⟩ := hy; obtain ⟨n, rfl⟩ := le_iff_exists_add.mp (Nat.add_one_le_iff.mpr hn)
       use body.take n y; simp_rw [pullSub_body, Set.image_image, ← Set.subset_empty_iff]
       rintro x ⟨⟨z, _, rfl⟩, ⟨⟨x', hx'⟩, hxp, rfl⟩⟩; apply hy _ hx' hxp; use z
       rw [← hlen, ← x.length_map Prod.fst, add_assoc, ← Stream'.append_take, add_comm, Stream'.take_succ]
@@ -347,9 +347,9 @@ lemma LosingCondition.not_lost_short {x : (G').tree} (hxl : 2 * k + 2 ≤ x.val.
   (H : LosingCondition (Tree.take (2 * k + 2) x).val (by simpa))
   (hnL : ¬ G.WonPosition (x.val.map Prod.fst) (Player.one.residual x.val)) :
   x.val.length + 1 ≤ 2 * k + 2 + H.y.val.length := by
-  by_contra hlen; simp [Nat.lt_iff_add_one_le] at hlen; apply hnL
+  by_contra hlen; apply hnL
   have hx := mem_getTree x; erw [H.y_spec] at hx
-  rw [pullSub_append, mem_pullSub_long (by simpa [hxl])] at hx
+  rw [pullSub_append, mem_pullSub_long (by simpa [hxl] using hlen)] at hx
   obtain ⟨z, _, hze⟩ := hx; have hW := H.1
   simp_rw [H.y_spec, pullSub_append, pullSub_body, subAt_body] at hW
   have := Game.WonPosition.extend z (G := G) (p := Player.one.residual (x.val.map Prod.fst ++ z))
